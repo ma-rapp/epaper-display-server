@@ -1,0 +1,9 @@
+services:
+  frontend:
+    image: nginx:${NGINX_VERSION}
+    restart: always
+    volumes:
+      - ./nginx/etc/nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./static:/static:ro
+    ports:
+      - "8081:8081"
