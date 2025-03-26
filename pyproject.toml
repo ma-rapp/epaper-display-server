@@ -5,6 +5,9 @@ readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "hikingplots",
+    "numpy>=2.2.4",
+    "pillow>=11.1.0",
+    "pyyaml>=6.0.2",
 ]
 
 [tool.ruff.lint]
