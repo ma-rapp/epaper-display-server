@@ -91,8 +91,8 @@ class HikingQuizApp(App):
         if track_name is None:
             rand = random.Random(1)
 
-            k = 20
-            last_k_track_names = [entry["track_name"] for entry in history[-20:]]
+            k = len(history) // 2
+            last_k_track_names = [entry["track_name"] for entry in history[-k:]]
 
             track_names = self.get_all_track_names()
             rand.shuffle(track_names)
