@@ -4,6 +4,9 @@ import logging
 import pathlib
 import time
 
+from renderer.apps.dashboard.app import DashboardApp, DashboardScreenConfig
+from renderer.apps.dashboard.sun import SunriseSunsetWidget
+from renderer.apps.dashboard.weather import WeatherWidget
 from renderer.apps.hiking_quiz.app import HikingQuizApp
 
 HERE = pathlib.Path(__file__).parent
@@ -19,6 +22,27 @@ def main():
 
     apps = [
         HikingQuizApp(),
+        DashboardApp(
+            [
+                DashboardScreenConfig(
+                    [
+                        SunriseSunsetWidget(
+                            position=(10, 10),
+                            size=(780, 210),
+                            latitude=48.74,
+                            longitude=9.31,
+                        ),
+                        WeatherWidget(
+                            position=(10, 210),
+                            size=(780, 480 - 10 - 210),
+                            latitude=48.74,
+                            longitude=9.31,
+                            days=7,
+                        ),
+                    ]
+                ),
+            ]
+        ),
     ]
 
     static = pathlib.Path(HERE / "../static")
