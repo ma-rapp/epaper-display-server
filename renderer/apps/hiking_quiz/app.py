@@ -90,17 +90,21 @@ class HikingQuizApp(App):
 
         if track_name is None:
             rand = random.Random(1)
+            all_track_names = self.get_all_track_names()
+            rand.shuffle(all_track_names)
 
-            k = len(history) // 2
+            k = len(all_track_names) // 2
+            assert len(all_track_names) > k
+
             last_k_track_names = [entry["track_name"] for entry in history[-k:]]
 
-            track_names = self.get_all_track_names()
-            rand.shuffle(track_names)
-            assert len(track_names) > k
+            # remove last k track names to avoid too close repetitions
+            eligible_track_names = [
+                r for r in all_track_names if r not in last_k_track_names
+            ]
 
-            track_names = [r for r in track_names if r not in last_k_track_names]
+            track_name = eligible_track_names[week % len(eligible_track_names)]
 
-            track_name = track_names[week % len(track_names)]
             history.append({"week": week, "track_name": track_name})
             with open(history_file, "w") as f:
                 writer = csv.DictWriter(f, fieldnames=["week", "track_name"])
