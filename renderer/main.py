@@ -5,6 +5,7 @@ import pathlib
 import time
 
 from renderer.apps.dashboard.app import DashboardApp, DashboardScreenConfig
+from renderer.apps.dashboard.influx import InfluxDBCurrentValue, InfluxDBTrend
 from renderer.apps.dashboard.sun import SunriseSunsetWidget
 from renderer.apps.dashboard.weather import WeatherWidget
 from renderer.apps.hiking_quiz.app import HikingQuizApp
@@ -38,6 +39,43 @@ def main():
                             latitude=48.74,
                             longitude=9.31,
                             days=7,
+                        ),
+                    ]
+                ),
+            ]
+        ),
+        DashboardApp(
+            [
+                DashboardScreenConfig(
+                    [
+                        InfluxDBCurrentValue(
+                            position=(70, 480 // 4 - 90),
+                            size=(250, 2 * 90),
+                            url="http://192.168.178.222:8086",
+                            data_fields=["temperature", "humidity", "co2"],
+                            sensor_id="1",
+                            alignment="vertical",
+                        ),
+                        InfluxDBTrend(
+                            position=(405, 10),
+                            size=(385 + 10, 230),
+                            url="http://192.168.178.222:8086",
+                            data_field="temperature",
+                            sensor_id="1",
+                        ),
+                        InfluxDBTrend(
+                            position=(10, 240),
+                            size=(385 + 10, 230),
+                            url="http://192.168.178.222:8086",
+                            data_field="humidity",
+                            sensor_id="1",
+                        ),
+                        InfluxDBTrend(
+                            position=(405, 240),
+                            size=(385 + 10, 230),
+                            url="http://192.168.178.222:8086",
+                            data_field="co2",
+                            sensor_id="1",
                         ),
                     ]
                 ),

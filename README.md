@@ -5,7 +5,7 @@ The display is organized in separate apps.
 Each app can display several screens.
 For the client, see [epaper-display-panel](https://github.com/ma-rapp/epaper-display-panel).
 
-At the moment there are two apps:
+At the moment there are the following apps:
 
 ## App: Hiking Quiz
 
@@ -20,6 +20,14 @@ Here is an example:
 A display of sunrise/sunset times at your location, as well as the weather of the upcoming week. Here is an example:
 
 ![Hiking Quiz](/images/sun-and-weather.png)
+
+## App: Air Quality Dashboard
+
+A dashboard showing the current air quality and the history of the last 24h.
+See also [hobby.rapp-martin.de/projects/air-quality-dashboards/](https://hobby.rapp-martin.de/projects/air-quality-dashboards/).
+Here is an example:
+
+![Air Quality Dashboard](/images/air-quality-dashboard.png)
 
 ## Technical details
 
