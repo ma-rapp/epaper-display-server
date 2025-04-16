@@ -238,7 +238,7 @@ from(bucket: "appartment")
                 3.8 * font["size"] / self.width,  # left
                 1.6 * font["size"] / self.height,  # bottom
                 1 - (3.8 + 1.6) * font["size"] / self.width,  # width
-                1 - (1.6 + 1.2) * font["size"] / self.height,  # height
+                1 - (1.6 + 1.4) * font["size"] / self.height,  # height
             ],
         )
         ax.grid(True)
