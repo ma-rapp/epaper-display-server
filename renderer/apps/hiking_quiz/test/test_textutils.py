@@ -1,3 +1,9 @@
+import os
+import sys
+
+print(sys.path)
+print(os.getcwd())
+
 from renderer.apps.hiking_quiz.textutils import splitline_evenly
 
 

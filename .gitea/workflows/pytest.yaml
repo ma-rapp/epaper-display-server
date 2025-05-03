@@ -1,0 +1,26 @@
+name: Run tests
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v5
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgdal-dev
+      - name: Install Python dependencies
+        run: |
+          uv sync
+      - name: Run tests
+        run: |
+          PYTHONPATH=`pwd` uv run pytest -v
