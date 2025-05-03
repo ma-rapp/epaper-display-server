@@ -3,8 +3,7 @@ import datetime
 import logging
 import pathlib
 import random
-from collections.abc import Callable
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Tuple
 
 import numpy as np
 import yaml
@@ -13,6 +12,7 @@ from hikingplots.plot.track import Track
 from PIL import Image, ImageDraw, ImageFont
 
 from renderer.app import App
+from renderer.apps.hiking_quiz.textutils import splitline_evenly
 
 
 class HikingQuizApp(App):
@@ -180,83 +180,6 @@ class HikingQuizApp(App):
                 return stage
         raise ValueError(f"could not determine stage for {elapsed_hours} elapsed hours")
 
-    def _generate_all_splits(
-        self,
-        elements: List,
-        nb_splits: int,
-        valid_fn: Optional[Callable[[List[str]], bool]] = None,
-    ):
-        """
-        generate all splits of the elements.
-
-        Example 1:
-            elements = [1, 2, 3]
-            nb_splits = 1
-        Splits
-            [1, 2, 3]
-
-        Example 2:
-            elements = [1, 2, 3]
-            nb_splits = 2
-        Splits
-            [1], [2, 3]
-            [1, 2], [3]
-
-        Example 3:
-            elements = [1, 2, 3]
-            nb_splits = 3
-        Splits
-            [1], [2], [3]
-        """
-        if nb_splits > len(elements):
-            return
-        if nb_splits == 1:
-            if valid_fn is not None and not valid_fn(elements):
-                return
-            yield [elements]
-        else:
-            for nb_elements_first_split in range(1, len(elements) + 1):
-                first_element = elements[:nb_elements_first_split]
-                if valid_fn is not None and not valid_fn(first_element):
-                    continue
-                remaining_elements = elements[nb_elements_first_split:]
-                for remaining_splits in self._generate_all_splits(
-                    remaining_elements,
-                    nb_splits - 1,
-                    valid_fn=valid_fn,
-                ):
-                    split = [first_element] + remaining_splits
-                    yield split
-
-    def splitline_evenly(self, line: str, font: ImageFont, maxwidth: int):
-        nb_splits = 1
-        words = line.split(" ")
-        while True:
-            if nb_splits >= len(words):
-                return words
-
-            shortest_width = None
-            best_split_lines = None
-            for split in self._generate_all_splits(
-                words,
-                nb_splits,
-                valid_fn=lambda words: font.getlength(" ".join(words))
-                < min(maxwidth, shortest_width or maxwidth),
-            ):
-                split_lines = [" ".join(words) for words in split]
-                width = max(font.getlength(line) for line in split_lines)
-                if shortest_width is None or width < shortest_width:
-                    shortest_width = width
-                    best_split_lines = split_lines
-
-            if shortest_width is not None:
-                assert (
-                    shortest_width <= maxwidth
-                )  # only valid split should be found when using a valid_fn
-                return best_split_lines
-
-            nb_splits += 1
-
     def _get_track_info(self, track_name: str) -> Dict:
         info_attributes = [
             "year",
@@ -334,8 +257,8 @@ class HikingQuizApp(App):
         lines = [
             subline
             for line in lines
-            for subline in self.splitline_evenly(
-                line, font=font, maxwidth=screen.width / 3
+            for subline in splitline_evenly(
+                line, measure_fn=font.getlength, maxwidth=screen.width / 3
             )
         ]
 

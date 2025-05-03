@@ -24,5 +24,6 @@ hikingplots = { git = "https://github.com/ma-rapp/hikingplots.git" }
 [dependency-groups]
 dev = [
     "pre-commit>=4.0",
+    "pytest>=8.3.5",
     "ruff>=0.8",
 ]
