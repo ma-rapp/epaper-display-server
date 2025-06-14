@@ -49,7 +49,7 @@ class InfluxDBWidget(Widget):
                 "temperature": 1,
                 "humidity": 0,
                 "co2": -1,
-            }.get(field, None)
+            }.get(field, 0)
         if sep is None:
             sep = {
                 "temperature": " ",
@@ -95,7 +95,7 @@ from(bucket: "appartment")
         else:
             return record.get_value()
 
-    def render(self, timestamp: datetime.datetime) -> Image:
+    def render(self, timestamp: datetime.datetime) -> Image.Image:
         screen = Image.new("1", self.size, 255)
         draw = ImageDraw.Draw(screen)
 
@@ -217,7 +217,7 @@ from(bucket: "appartment")
             if record.get_value() is not None
         ]
 
-    def render(self, timestamp: datetime.datetime) -> Image:
+    def render(self, timestamp: datetime.datetime) -> Image.Image:
         font_path = self.data_folder / "Font.ttc"
         fm.fontManager.addfont(font_path)
         prop = fm.FontProperties(fname=font_path)
@@ -231,12 +231,12 @@ from(bucket: "appartment")
         # left axis
         ax = fig.add_subplot(axes_class=AxesZero)
         ax.set_position(
-            [
+            (
                 3.8 * font["size"] / self.width,  # left
                 1.6 * font["size"] / self.height,  # bottom
                 1 - (3.8 + 1.6) * font["size"] / self.width,  # width
                 1 - (1.6 + 1.4) * font["size"] / self.height,  # height
-            ],
+            ),
         )
         ax.grid(True)
 

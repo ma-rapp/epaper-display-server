@@ -71,7 +71,7 @@ def split_into_words(line: str):
 
 
 def splitline_evenly(
-    line: str, measure_fn: Callable[[List[str]], float], maxwidth: int
+    line: str, measure_fn: Callable[[str], float], maxwidth: int | float
 ):
     nb_splits = 1
     words = split_into_words(line)

@@ -10,7 +10,7 @@ class Widget(ABC):
         self.size = size
 
     @abstractmethod
-    def render(self, timestamp: datetime.datetime) -> Image:
+    def render(self, timestamp: datetime.datetime) -> Image.Image:
         pass
 
     @property

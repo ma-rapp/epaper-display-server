@@ -3,7 +3,7 @@ import datetime
 import logging
 import pathlib
 import random
-from typing import Dict, List, Tuple
+from typing import Any, Dict, List, Tuple
 
 import numpy as np
 import yaml
@@ -74,7 +74,7 @@ class HikingQuizApp(App):
                 self.logger.info(f"Excluded track: {track_folder.name}")
         return sorted(track_names)
 
-    def get_track_name(self, week: int) -> pathlib.Path:
+    def get_track_name(self, week: int) -> str:
         history_file = self.data_folder / "history_hiking_quiz_history.csv"
         if history_file.exists():
             with open(history_file) as f:
@@ -83,7 +83,7 @@ class HikingQuizApp(App):
         else:
             history = []
 
-        track_name = None
+        track_name: str | None = None
         for entry in history:
             if int(entry["week"]) == week:
                 track_name = entry["track_name"]
@@ -112,8 +112,8 @@ class HikingQuizApp(App):
                 writer.writerows(history)
         return track_name
 
-    def get_stage(self, elapsed_hours: int) -> int:
-        stages_after_hours = {
+    def get_stage(self, elapsed_hours: float) -> dict[str, Any]:
+        stages_after_hours: dict[int | float, dict[str, Any]] = {
             0: {  # Monday morning: draw nothing
                 "draw_partial_track": 0.0,
             }
@@ -250,7 +250,7 @@ class HikingQuizApp(App):
         return lines
 
     def _draw_description_lines(
-        self, screen: Image, lines: List[str], position: str
+        self, screen: Image.Image, lines: List[str], position: str
     ) -> None:
         font = ImageFont.truetype(self.data_folder / "Font.ttc", size=24)
 
@@ -316,7 +316,7 @@ class HikingQuizApp(App):
                     )
                     next_line_bottom -= line_skip
         elif position == "top_right":
-            next_line_bottom = None
+            next_line_bottom: int | None = None
 
             for i, line in enumerate(lines):  # draw top to bottom
                 if not line:
@@ -373,7 +373,9 @@ class HikingQuizApp(App):
                 fill=0,
             )
 
-    def plot(self, track_name: str, stage: Dict, description_position: str) -> Image:
+    def plot(
+        self, track_name: str, stage: Dict, description_position: str
+    ) -> Image.Image:
         track_path = self.data_folder / "tracks" / track_name
         image = plot_track_duotone(
             track_path,
@@ -382,7 +384,7 @@ class HikingQuizApp(App):
             draw_partial_track=stage.get("draw_partial_track", 1.0),
             track_halign="left" if "info" in stage else "center",
             draw_topo=stage.get("draw_topo", False),
-            draw_major_level_labels=stage.get("draw_major_level_labels"),
+            draw_major_level_labels=stage.get("draw_major_level_labels", False),
             add_scale=stage.get("add_scale", False),
             show_steps=False,
         )

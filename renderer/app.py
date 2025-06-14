@@ -15,7 +15,7 @@ class App(ABC):
         return the number of screens in this app
         """
 
-    def create_empty_screen(self) -> Image:
+    def create_empty_screen(self) -> Image.Image:
         return Image.new("1", (800, 480), 255)
 
     @abstractmethod
