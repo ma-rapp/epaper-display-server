@@ -52,8 +52,23 @@ def main():
                             position=(70, 480 // 4 - 90),
                             size=(250, 2 * 90),
                             url="http://192.168.178.222:8086",
-                            data_fields=["temperature", "humidity", "co2"],
-                            sensor_id="1",
+                            data_fields=[
+                                {
+                                    "sensor_id": 1,
+                                    "field": "temperature",
+                                    "label": "Temperatur",
+                                },
+                                {
+                                    "sensor_id": 1,
+                                    "field": "humidity",
+                                    "label": "Luftfeuchtigkeit",
+                                },
+                                {
+                                    "sensor_id": 1,
+                                    "field": "co2",
+                                    "label": "CO₂ Gehalt",
+                                },
+                            ],
                             alignment="vertical",
                         ),
                         InfluxDBTrend(
