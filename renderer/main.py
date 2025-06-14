@@ -7,11 +7,14 @@ import time
 from renderer.apps.dashboard.app import DashboardApp, DashboardScreenConfig
 from renderer.apps.dashboard.influx import (
     InfluxDBCurrentValue,
+    InfluxDBTrend,
     InfluxDBTrendCompareToYesterday,
+    TrendAggregation,
 )
 from renderer.apps.dashboard.sun import SunriseSunsetWidget
 from renderer.apps.dashboard.weather import WeatherWidget
 from renderer.apps.hiking_quiz.app import HikingQuizApp
+from renderer.config import INFLUXDB_URL
 
 HERE = pathlib.Path(__file__).parent
 
@@ -23,6 +26,23 @@ def main():
 
     logger = logging.getLogger(__name__.split(".")[0])
     logger.info("starting")
+
+    air_quality_long_term_history_h = 56 * 24  # 56 days
+    air_quality_long_term_aggregations = [
+        TrendAggregation(
+            interval_min=24 * 60,
+            function="min",
+            linewidth=1,
+            linestyle="dotted",
+        ),
+        TrendAggregation(interval_min=24 * 60, function="median", linewidth=2),
+        TrendAggregation(
+            interval_min=24 * 60,
+            function="max",
+            linewidth=1,
+            linestyle="dotted",
+        ),
+    ]
 
     apps = [
         HikingQuizApp(),
@@ -63,14 +83,19 @@ def main():
                 DashboardScreenConfig(
                     [
                         InfluxDBCurrentValue(
-                            position=(70, 480 // 4 - 90),
-                            size=(250, 2 * 90),
-                            url="http://192.168.178.222:8086",
+                            position=(800 // 4 - 150, 480 // 4 - 2 * 50),
+                            size=(2 * 150, 4 * 50),
+                            url=INFLUXDB_URL,
                             data_fields=[
                                 {
                                     "sensor_id": 1,
                                     "field": "temperature",
                                     "label": "Temperatur",
+                                },
+                                {
+                                    "sensor_id": 3,
+                                    "field": "temperature",
+                                    "label": "Temperatur (Balkon)",
                                 },
                                 {
                                     "sensor_id": 1,
@@ -88,23 +113,45 @@ def main():
                         InfluxDBTrendCompareToYesterday(
                             position=(405, 10),
                             size=(385 + 10, 230),
-                            url="http://192.168.178.222:8086",
+                            url=INFLUXDB_URL,
                             data_field="temperature",
                             sensor_id="1",
                         ),
                         InfluxDBTrendCompareToYesterday(
                             position=(10, 240),
                             size=(385 + 10, 230),
-                            url="http://192.168.178.222:8086",
+                            url=INFLUXDB_URL,
                             data_field="humidity",
                             sensor_id="1",
                         ),
                         InfluxDBTrendCompareToYesterday(
                             position=(405, 240),
                             size=(385 + 10, 230),
-                            url="http://192.168.178.222:8086",
+                            url=INFLUXDB_URL,
                             data_field="co2",
                             sensor_id="1",
+                        ),
+                    ]
+                ),
+                DashboardScreenConfig(
+                    [
+                        InfluxDBTrend(
+                            position=(10, 10),
+                            size=(800 - 10 - 10, 230),
+                            url=INFLUXDB_URL,
+                            data_field="temperature",
+                            sensor_id="1",
+                            aggregations=air_quality_long_term_aggregations,
+                            history_h=air_quality_long_term_history_h,
+                        ),
+                        InfluxDBTrend(
+                            position=(10, 10 + 230),
+                            size=(800 - 10 - 10, 230),
+                            url=INFLUXDB_URL,
+                            data_field="temperature",
+                            sensor_id="3",
+                            aggregations=air_quality_long_term_aggregations,
+                            history_h=air_quality_long_term_history_h,
                         ),
                     ]
                 ),
