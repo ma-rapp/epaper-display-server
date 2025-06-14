@@ -1,6 +1,7 @@
 import datetime
 import io
 import pathlib
+from typing import Any, Dict, List
 
 import matplotlib
 import matplotlib.font_manager as fm
@@ -27,13 +28,6 @@ class InfluxDBWidget(Widget):
             org="home",
         )
         self.query_api = client.query_api()
-
-    def translate_field(self, field: str) -> str:
-        return {
-            "temperature": "Temperatur",
-            "humidity": "Luftfeuchtigkeit",
-            "co2": "CO₂ Gehalt",
-        }.get(field, field)
 
     def get_unit(self, field: str) -> str:
         return {
@@ -72,19 +66,22 @@ class InfluxDBWidget(Widget):
 
 class InfluxDBCurrentValue(InfluxDBWidget):
     def __init__(
-        self, data_fields, sensor_id, alignment: str = "vertical", *args, **kwargs
+        self,
+        data_fields: List[Dict[str, Any]],
+        alignment: str = "vertical",
+        *args,
+        **kwargs,
     ):
         super().__init__(*args, **kwargs)
 
         self.data_fields = data_fields
-        self.sensor_id = sensor_id
         self.alignment = alignment
 
-    def get_current_data(self, data_field: str, max_age=datetime.timedelta(minutes=5)):
+    def get_current_data(self, data_field: Dict, max_age=datetime.timedelta(minutes=5)):
         query = f"""\
 from(bucket: "appartment")
     |> range(start: 0)
-    |> filter(fn: (r) => r._field == "{data_field}" and r.sensorid == "{self.sensor_id}")
+    |> filter(fn: (r) => r._field == "{data_field["field"]}" and r.sensorid == "{data_field["sensor_id"]}")
     |> last()"""
         result = self.query_api.query(query)
 
@@ -110,11 +107,11 @@ from(bucket: "appartment")
                 value_str = "offline"
                 unit_str = None
             else:
-                value_str = self.format_measurement(data_field, value, unit="")
-                unit_str = self.get_unit(data_field)
+                value_str = self.format_measurement(data_field["field"], value, unit="")
+                unit_str = self.get_unit(data_field["field"])
             data.append(
                 {
-                    "label": self.translate_field(data_field),
+                    "label": data_field["label"],
                     "value_str": value_str,
                     "unit_str": unit_str,
                 }
