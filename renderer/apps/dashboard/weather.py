@@ -44,7 +44,7 @@ class WeatherWidget(Widget):
         ]
         return hourly_forecast_day["weathercode"].max()
 
-    def get_weathercode_icon(self, code: int, size: int) -> Image:
+    def get_weathercode_icon(self, code: int, size: int) -> Image.Image:
         mapping = {
             0: "wi-day-sunny",  # Clear sky
             1: "wi-day-sunny",  # Mainly clear
@@ -119,7 +119,9 @@ class WeatherWidget(Widget):
         }
         return mapping.get(code, "???\n")
 
-    def get_forecast(self, timestamp: datetime.datetime) -> pd.DataFrame:
+    def get_forecast(
+        self, timestamp: datetime.datetime
+    ) -> tuple[pd.DataFrame, pd.DataFrame]:
         cache_session = requests_cache.CachedSession(
             self.cache_folder / "weather_forecast_cache", expire_after=3600
         )
@@ -189,7 +191,7 @@ class WeatherWidget(Widget):
 
     def plot_rain_diagram(
         self, hourly_forecast: pd.DataFrame, height: int, width: int, max_rain: float
-    ) -> Image:
+    ) -> Image.Image:
         screen = Image.new("1", (width, height), 255)
         draw = ImageDraw.Draw(screen)
 
@@ -215,7 +217,7 @@ class WeatherWidget(Widget):
 
     def render_day(
         self, day_info: pd.Series, hourly_forecast_day: pd.DataFrame, width: int
-    ) -> Image:
+    ) -> Image.Image:
         locale.setlocale(locale.LC_ALL, "de_DE.UTF-8")
 
         screen = Image.new("1", (width, self.size[1]), 255)
@@ -226,7 +228,7 @@ class WeatherWidget(Widget):
         draw.text(
             (width // 2, 0), day_info["date"].strftime("%a"), font=font, anchor="mt"
         )
-        pos += font.size
+        pos += int(font.size)
 
         weathercode_day = self.get_weathercode_day(hourly_forecast_day)
         self.logger.debug(f"Day {day_info['date']}: Weather code {weathercode_day}")
@@ -238,7 +240,7 @@ class WeatherWidget(Widget):
         weathercode_text = self.get_weathercode_text(weathercode_day)
         for line in weathercode_text.split("\n"):
             draw.text((width // 2, pos + font.size), line, font=font, anchor="mb")
-            pos += font.size * 1.2
+            pos += int(font.size * 1.2)
         pos += 10
 
         font = ImageFont.truetype(self.data_folder / "Font.ttc", size=18)
@@ -248,7 +250,7 @@ class WeatherWidget(Widget):
             font=font,
             anchor="mb",
         )
-        pos += font.size * 1.2
+        pos += int(font.size * 1.2)
         pos += 5
 
         font = ImageFont.truetype(self.data_folder / "Font.ttc", size=18)
@@ -264,7 +266,7 @@ class WeatherWidget(Widget):
                 font=font,
                 anchor="mb",
             )
-        pos += font.size * 1.2
+        pos += int(font.size * 1.2)
 
         rain_diagram_height = 25
         if hourly_forecast_day["precipitation"].max() > 0:
@@ -295,12 +297,12 @@ class WeatherWidget(Widget):
                 font=font,
                 anchor="lb",
             )
-        pos += font.size * 1.2
+        pos += int(font.size * 1.2)
         pos += 5
 
         return screen
 
-    def render(self, timestamp: datetime.datetime) -> Image:
+    def render(self, timestamp: datetime.datetime) -> Image.Image:
         daily_forecast, hourly_forecast = self.get_forecast(timestamp)
 
         screen = Image.new("1", self.size, 255)

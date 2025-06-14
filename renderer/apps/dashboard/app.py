@@ -35,7 +35,7 @@ class DashboardApp(App):
         self,
         screen_config: DashboardScreenConfig,
         timestamp: datetime.datetime,
-    ) -> Image:
+    ) -> Image.Image:
         screen = self.create_empty_screen()
         for widget in screen_config.widgets:
             start = time.time()

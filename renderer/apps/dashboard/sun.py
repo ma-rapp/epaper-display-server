@@ -3,6 +3,7 @@ import io
 import pathlib
 
 import astral.location
+import astral.sun
 import matplotlib
 import matplotlib.font_manager as fm
 import matplotlib.pyplot as plt
@@ -24,7 +25,7 @@ class SunriseSunsetWidget(Widget):
 
     def get_sun_trace(
         self, day: datetime.date
-    ) -> list[tuple[datetime.datetime, float]]:
+    ) -> tuple[list[datetime.datetime], list[float]]:
         loc = astral.location.Location(self.here())
 
         # create a list of times at 0:00, 0:01, 0:02, ..., 23:59
@@ -49,7 +50,7 @@ class SunriseSunsetWidget(Widget):
         loc = astral.location.Location(self.here())
         return loc.solar_elevation(timestamp)
 
-    def render(self, timestamp: datetime.datetime) -> Image:
+    def render(self, timestamp: datetime.datetime) -> Image.Image:
         # round timestamp to closest 15 minutes (round to nearest)
         rounding_interval = datetime.timedelta(minutes=15)
         timestamp = timestamp + rounding_interval / 2
