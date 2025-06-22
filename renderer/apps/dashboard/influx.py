@@ -141,6 +141,7 @@ from(bucket: "appartment")
         font = ImageFont.truetype(self.data_folder / "Font.ttc", size=32)
         max_unit_width_pixels = max(
             [font.getlength(d["unit_str"]) for d in data if d["unit_str"] is not None]
+            or [0]
         )
         for i, d in enumerate(data):
             if self.alignment == "horizontal":
