@@ -21,11 +21,15 @@ class WeatherWidget(Widget):
         latitude: float,
         longitude: float,
         days: int,
+        header_font_size: int = 22,
+        text_font_size: int = 16,
     ) -> None:
         super().__init__(position, size)
         self.latitude = latitude
         self.longitude = longitude
         self.days = days
+        self.header_font_size = header_font_size
+        self.text_font_size = text_font_size
 
         self.cache_folder = pathlib.Path(__file__).parent / "cache"
         self.data_folder = pathlib.Path(__file__).parent / "data"
@@ -230,7 +234,9 @@ class WeatherWidget(Widget):
         draw = ImageDraw.Draw(screen)
         pos = 0
 
-        font = ImageFont.truetype(self.data_folder / "Font.ttc", size=20)
+        font = ImageFont.truetype(
+            self.data_folder / "Font.ttc", size=self.header_font_size
+        )
         draw.text(
             (width // 2, 0), day_info["date"].strftime("%a"), font=font, anchor="mt"
         )
@@ -242,14 +248,18 @@ class WeatherWidget(Widget):
         screen.paste(icon, (width // 2 - icon.width // 2, pos), icon)
         pos += icon.height
 
-        font = ImageFont.truetype(self.data_folder / "Font.ttc", size=18)
+        font = ImageFont.truetype(
+            self.data_folder / "Font.ttc", size=self.text_font_size
+        )
         weathercode_text = self.get_weathercode_text(weathercode_day)
         for line in weathercode_text.split("\n"):
             draw.text((width // 2, pos + font.size), line, font=font, anchor="mb")
             pos += int(font.size * 1.2)
         pos += 10
 
-        font = ImageFont.truetype(self.data_folder / "Font.ttc", size=18)
+        font = ImageFont.truetype(
+            self.data_folder / "Font.ttc", size=self.text_font_size
+        )
         draw.text(
             (width // 2, pos + font.size),
             f"{day_info['temperature_2m_min']:.0f}°C / {day_info['temperature_2m_max']:.0f}°C",
@@ -259,7 +269,9 @@ class WeatherWidget(Widget):
         pos += int(font.size * 1.2)
         pos += 5
 
-        font = ImageFont.truetype(self.data_folder / "Font.ttc", size=18)
+        font = ImageFont.truetype(
+            self.data_folder / "Font.ttc", size=self.text_font_size
+        )
         if day_info["precipitation_sum"] > 0:
             if day_info["precipitation_sum"] < 1:
                 formatted_precipitation = f"{day_info['precipitation_sum']:.1f}"
@@ -287,7 +299,9 @@ class WeatherWidget(Widget):
         pos += 5
 
         if day_info["wind_speed_10m_max"] > 20:
-            font = ImageFont.truetype(self.data_folder / "Font.ttc", size=18)
+            font = ImageFont.truetype(
+                self.data_folder / "Font.ttc", size=self.text_font_size
+            )
             wind_img = Image.open(
                 self.data_folder / "weather-icons" / "png" / "wi-strong-wind.png"
             )
