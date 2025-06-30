@@ -5,7 +5,10 @@ import pathlib
 import time
 
 from renderer.apps.dashboard.app import DashboardApp, DashboardScreenConfig
-from renderer.apps.dashboard.influx import InfluxDBCurrentValue, InfluxDBTrend
+from renderer.apps.dashboard.influx import (
+    InfluxDBCurrentValue,
+    InfluxDBTrendCompareToYesterday,
+)
 from renderer.apps.dashboard.sun import SunriseSunsetWidget
 from renderer.apps.dashboard.weather import WeatherWidget
 from renderer.apps.hiking_quiz.app import HikingQuizApp
@@ -71,21 +74,21 @@ def main():
                             ],
                             alignment="vertical",
                         ),
-                        InfluxDBTrend(
+                        InfluxDBTrendCompareToYesterday(
                             position=(405, 10),
                             size=(385 + 10, 230),
                             url="http://192.168.178.222:8086",
                             data_field="temperature",
                             sensor_id="1",
                         ),
-                        InfluxDBTrend(
+                        InfluxDBTrendCompareToYesterday(
                             position=(10, 240),
                             size=(385 + 10, 230),
                             url="http://192.168.178.222:8086",
                             data_field="humidity",
                             sensor_id="1",
                         ),
-                        InfluxDBTrend(
+                        InfluxDBTrendCompareToYesterday(
                             position=(405, 240),
                             size=(385 + 10, 230),
                             url="http://192.168.178.222:8086",
