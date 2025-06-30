@@ -1,10 +1,4 @@
-import os
-import sys
-
-print(sys.path)
-print(os.getcwd())
-
-from renderer.apps.hiking_quiz.textutils import splitline_evenly
+from renderer.apps.textutils import splitline_evenly
 
 
 def test_split_simple():
