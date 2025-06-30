@@ -37,6 +37,9 @@ class WeatherWidget(Widget):
         Determine the most severe weather condition of the day.
         The day starts at 08:00 and ends at 20:00.
         The most severe weather condition is determined by taking the maximum code.
+
+        We don't use the daily weather code provided by open-meteo, because it considers
+        the whole day, while we want to focus on the daytime weather.
         """
         hourly_forecast_day = hourly_forecast_day[
             (hourly_forecast_day["date"].dt.hour >= 8)
@@ -75,6 +78,9 @@ class WeatherWidget(Widget):
             96: "wi-thunderstorm",  # Thunderstorm with slight hail
             97: "wi-thunderstorm",  # Thunderstorm with heavy hail
         }
+
+        if code not in mapping:
+            self.logger.warning(f"Unknown weather code: {code}. Using default icon.")
 
         icon_path = (
             self.data_folder
