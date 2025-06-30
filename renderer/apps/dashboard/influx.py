@@ -141,6 +141,7 @@ from(bucket: "appartment")
         font = ImageFont.truetype(self.data_folder / "Font.ttc", size=32)
         max_unit_width_pixels = max(
             [font.getlength(d["unit_str"]) for d in data if d["unit_str"] is not None]
+            or [0]
         )
         for i, d in enumerate(data):
             if self.alignment == "horizontal":
@@ -186,6 +187,11 @@ from(bucket: "appartment")
 
 
 class InfluxDBTrend(InfluxDBWidget):
+    """
+    Widget to display a trend of a single data field from an InfluxDB sensor.
+    It shows the last 24 hours of data.
+    """
+
     def __init__(self, data_field, sensor_id, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -199,10 +205,12 @@ class InfluxDBTrend(InfluxDBWidget):
             "co2": [400, 1000],
         }.get(self.data_field, [0, 0])
 
-    def get_trend_data(self, days: int = 1):
+    def get_trend_data(
+        self, start: datetime.datetime, stop: datetime.datetime
+    ) -> List[tuple[datetime.datetime, float]]:
         query = f"""\
 from(bucket: "appartment")
-    |> range(start: -{days}d)
+    |> range(start: {start.isoformat()}, stop: {stop.isoformat()})
     |> filter(fn: (r) => r._field == "{self.data_field}" and r.sensorid == "{self.sensor_id}")
     |> aggregateWindow(every: 5m, fn: mean)"""
         result = self.query_api.query(query)
@@ -217,7 +225,13 @@ from(bucket: "appartment")
             if record.get_value() is not None
         ]
 
-    def render(self, timestamp: datetime.datetime) -> Image.Image:
+    def _create_plot(
+        self,
+        start: datetime.datetime,
+        stop: datetime.datetime,
+        min_data_value: float,
+        max_data_value: float,
+    ):
         font_path = self.data_folder / "Font.ttc"
         fm.fontManager.addfont(font_path)
         prop = fm.FontProperties(fname=font_path)
@@ -228,7 +242,6 @@ from(bucket: "appartment")
 
         fig = plt.figure(figsize=(self.width / 100, self.height / 100), dpi=100)
 
-        # left axis
         ax = fig.add_subplot(axes_class=AxesZero)
         ax.set_position(
             (
@@ -240,17 +253,11 @@ from(bucket: "appartment")
         )
         ax.grid(True)
 
-        trend = self.get_trend_data()
-        times, values = zip(*trend)
-        ax.plot(times, values, color="black", linewidth=2)
-
         # get xtick positions as multiples of 6 hours
-        start = min(times)
-        end = max(times)
         start_of_day = start.replace(hour=0, minute=0, second=0, microsecond=0)
         p = start_of_day
         xticks = []
-        while p < end:
+        while p < stop:
             if p > start:
                 xticks.append(p)
             p += datetime.timedelta(hours=6)
@@ -263,13 +270,18 @@ from(bucket: "appartment")
                 )
             )
         )
+        if self.data_field == "temperature":
+            ax.yaxis.set_major_locator(ticker.MultipleLocator(2))
 
-        ax.set_xlim(start, end)
+        ax.set_xlim(start, stop)
         min_value, max_value = self.get_min_range()
-        min_value = min(min_value, min(values) - 0.1 * (max_value - min_value))
-        max_value = max(max_value, max(values) + 0.1 * (max_value - min_value))
+        min_value = min(min_value, min_data_value - 0.1 * (max_value - min_value))
+        max_value = max(max_value, max_data_value + 0.1 * (max_value - min_value))
         ax.set_ylim(min_value, max_value)
 
+        return fig, ax
+
+    def _fig_to_img(self, fig: matplotlib.figure.Figure) -> Image.Image:
         buf = io.BytesIO()
         fig.savefig(buf)
         fig.clf()
@@ -283,3 +295,58 @@ from(bucket: "appartment")
         # )
 
         return img
+
+    def render(self, timestamp: datetime.datetime) -> Image.Image:
+        start = timestamp - datetime.timedelta(days=1)
+        stop = timestamp
+
+        trend = self.get_trend_data(start=start, stop=stop)
+        times, values = zip(*trend)
+
+        fig, ax = self._create_plot(start, stop, min(values), max(values))
+
+        ax.plot(times, values, color="black", linewidth=2)
+
+        return self._fig_to_img(fig)
+
+
+class InfluxDBTrendCompareToYesterday(InfluxDBTrend):
+    """
+    Widget to display a trend of a single data field from an InfluxDB sensor,
+    comparing today's data to yesterday's data.
+    It shows the current day with today's data in solid line and yesterday's data in dotted line.
+    """
+
+    def render(self, timestamp: datetime.datetime) -> Image.Image:
+        start_of_day = timestamp.replace(hour=0, minute=0, second=0, microsecond=0)
+
+        one_day = datetime.timedelta(days=1)
+
+        start = start_of_day
+        stop = start_of_day + one_day
+
+        trend_today = self.get_trend_data(start=start, stop=stop)
+        trend_yesterday = self.get_trend_data(
+            start=start - one_day, stop=stop - one_day
+        )
+
+        times_today, values_today = zip(*trend_today)
+        times_yesterday, values_yesterday = zip(*trend_yesterday)
+
+        fig, ax = self._create_plot(
+            start,
+            stop,
+            min(values_today + values_yesterday),
+            max(values_today + values_yesterday),
+        )
+
+        ax.plot(
+            [t + one_day for t in times_yesterday],
+            values_yesterday,
+            color="black",
+            linewidth=1,
+            linestyle="dotted",
+        )
+        ax.plot(times_today, values_today, color="black", linewidth=2)
+
+        return self._fig_to_img(fig)
