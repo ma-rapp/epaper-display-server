@@ -270,6 +270,8 @@ from(bucket: "appartment")
                 )
             )
         )
+        if self.data_field == "temperature":
+            ax.yaxis.set_major_locator(ticker.MultipleLocator(2))
 
         ax.set_xlim(start, stop)
         min_value, max_value = self.get_min_range()
