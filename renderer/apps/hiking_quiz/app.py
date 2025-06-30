@@ -12,7 +12,7 @@ from hikingplots.plot.track import Track
 from PIL import Image, ImageDraw, ImageFont
 
 from renderer.app import App
-from renderer.apps.hiking_quiz.textutils import splitline_evenly
+from renderer.apps.textutils import splitline_evenly
 
 
 class HikingQuizApp(App):
