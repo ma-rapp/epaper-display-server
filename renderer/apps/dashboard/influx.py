@@ -69,6 +69,8 @@ class InfluxDBCurrentValue(InfluxDBWidget):
         self,
         data_fields: List[Dict[str, Any]],
         alignment: str = "vertical",
+        font_size_label: int = 16,
+        font_size_value: int = 32,
         *args,
         **kwargs,
     ):
@@ -76,6 +78,8 @@ class InfluxDBCurrentValue(InfluxDBWidget):
 
         self.data_fields = data_fields
         self.alignment = alignment
+        self.font_size_label = font_size_label
+        self.font_size_value = font_size_value
 
     def get_current_data(self, data_field: Dict, max_age=datetime.timedelta(minutes=5)):
         query = f"""\
@@ -118,7 +122,9 @@ from(bucket: "appartment")
             )
 
         # draw headings
-        font = ImageFont.truetype(self.data_folder / "Font.ttc", size=16)
+        font = ImageFont.truetype(
+            self.data_folder / "Font.ttc", size=self.font_size_label
+        )
         for i, d in enumerate(data):
             if self.alignment == "horizontal":
                 draw.text(
@@ -138,7 +144,9 @@ from(bucket: "appartment")
                 )
 
         # draw values
-        font = ImageFont.truetype(self.data_folder / "Font.ttc", size=32)
+        font = ImageFont.truetype(
+            self.data_folder / "Font.ttc", size=self.font_size_value
+        )
         max_unit_width_pixels = max(
             [font.getlength(d["unit_str"]) for d in data if d["unit_str"] is not None]
             or [0]
@@ -189,14 +197,24 @@ from(bucket: "appartment")
 class InfluxDBTrend(InfluxDBWidget):
     """
     Widget to display a trend of a single data field from an InfluxDB sensor.
-    It shows the last 24 hours of data.
+    It shows the last 24 hours of data by default.
     """
 
-    def __init__(self, data_field, sensor_id, *args, **kwargs):
+    def __init__(
+        self,
+        data_field: str,
+        sensor_id: int,
+        history_h: int = 24,
+        font_size: int = 16,
+        *args,
+        **kwargs,
+    ):
         super().__init__(*args, **kwargs)
 
         self.data_field = data_field
         self.sensor_id = sensor_id
+        self.history_h = history_h
+        self.font_size = font_size
 
     def get_min_range(self):
         return {
@@ -236,11 +254,20 @@ from(bucket: "appartment")
         fm.fontManager.addfont(font_path)
         prop = fm.FontProperties(fname=font_path)
 
-        font = {"family": [prop.get_name(), "sans-serif"], "size": 12}
+        dpi = 100
+        px = 1 / dpi
+        font_px = (
+            72 / dpi
+        )  # font sizes are usually in points, if we want to use px we need to convert
+
+        font = {
+            "family": [prop.get_name(), "sans-serif"],
+            "size": self.font_size * font_px,
+        }
 
         matplotlib.rc("font", **font)
 
-        fig = plt.figure(figsize=(self.width / 100, self.height / 100), dpi=100)
+        fig = plt.figure(figsize=(self.width * px, self.height * px), dpi=dpi)
 
         ax = fig.add_subplot(axes_class=AxesZero)
         ax.set_position(
@@ -248,20 +275,28 @@ from(bucket: "appartment")
                 3.8 * font["size"] / self.width,  # left
                 1.6 * font["size"] / self.height,  # bottom
                 1 - (3.8 + 1.6) * font["size"] / self.width,  # width
-                1 - (1.6 + 1.4) * font["size"] / self.height,  # height
+                1 - (1.6 + 1.6) * font["size"] / self.height,  # height
             ),
         )
         ax.grid(True)
 
-        # get xtick positions as multiples of 6 hours
+        if stop - start <= datetime.timedelta(hours=24):
+            # get xtick positions as multiples of 6 hours and format as hour:minute
+            interval = datetime.timedelta(hours=6)
+            format_str = "%H:%M"
+        else:
+            # get xtick positions as multiples of 24 hours and format as day of the week
+            interval = datetime.timedelta(hours=24)
+            format_str = "%a %d."
+
         start_of_day = start.replace(hour=0, minute=0, second=0, microsecond=0)
         p = start_of_day
         xticks = []
         while p < stop:
             if p > start:
                 xticks.append(p)
-            p += datetime.timedelta(hours=6)
-        ax.set_xticks(xticks, labels=[x.strftime("%H:%M") for x in xticks])
+            p += interval
+        ax.set_xticks(xticks, labels=[x.strftime(format_str) for x in xticks])
 
         ax.yaxis.set_major_formatter(
             ticker.FuncFormatter(
@@ -271,7 +306,10 @@ from(bucket: "appartment")
             )
         )
         if self.data_field == "temperature":
-            ax.yaxis.set_major_locator(ticker.MultipleLocator(2))
+            # we don't want to have a 2.5°C tick
+            ax.yaxis.set_major_locator(
+                ticker.MaxNLocator(nbins="auto", steps=[1, 2, 4, 5, 10])
+            )
 
         ax.set_xlim(start, stop)
         min_value, max_value = self.get_min_range()
@@ -297,7 +335,7 @@ from(bucket: "appartment")
         return img
 
     def render(self, timestamp: datetime.datetime) -> Image.Image:
-        start = timestamp - datetime.timedelta(days=1)
+        start = timestamp - datetime.timedelta(hours=self.history_h)
         stop = timestamp
 
         trend = self.get_trend_data(start=start, stop=stop)
@@ -318,6 +356,8 @@ class InfluxDBTrendCompareToYesterday(InfluxDBTrend):
     """
 
     def render(self, timestamp: datetime.datetime) -> Image.Image:
+        assert self.history_h == 24
+
         start_of_day = timestamp.replace(hour=0, minute=0, second=0, microsecond=0)
 
         one_day = datetime.timedelta(days=1)
