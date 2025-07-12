@@ -1,6 +1,7 @@
 import datetime
 import io
 import pathlib
+from dataclasses import dataclass
 from typing import Any, Dict, List
 
 import matplotlib
@@ -194,6 +195,14 @@ from(bucket: "appartment")
         return screen
 
 
+@dataclass
+class TrendAggregation:
+    interval_min: int
+    function: str
+    linewidth: int = 2
+    linestyle: str = "solid"
+
+
 class InfluxDBTrend(InfluxDBWidget):
     """
     Widget to display a trend of a single data field from an InfluxDB sensor.
@@ -204,6 +213,7 @@ class InfluxDBTrend(InfluxDBWidget):
         self,
         data_field: str,
         sensor_id: int,
+        aggregations: List[TrendAggregation] | None = None,
         history_h: int = 24,
         font_size: int = 16,
         *args,
@@ -213,6 +223,12 @@ class InfluxDBTrend(InfluxDBWidget):
 
         self.data_field = data_field
         self.sensor_id = sensor_id
+        if aggregations is not None:
+            self.aggregations = aggregations
+        else:
+            self.aggregations = [
+                TrendAggregation(interval_min=5, function="mean"),
+            ]
         self.history_h = history_h
         self.font_size = font_size
 
@@ -224,13 +240,20 @@ class InfluxDBTrend(InfluxDBWidget):
         }.get(self.data_field, [0, 0])
 
     def get_trend_data(
-        self, start: datetime.datetime, stop: datetime.datetime
+        self,
+        start: datetime.datetime,
+        stop: datetime.datetime,
+        aggregation: TrendAggregation,
     ) -> List[tuple[datetime.datetime, float]]:
+        if aggregation.function not in ["mean", "max", "min", "median"]:
+            raise ValueError(
+                f"Unsupported aggregation function: {aggregation.function}"
+            )
         query = f"""\
 from(bucket: "appartment")
     |> range(start: {start.isoformat()}, stop: {stop.isoformat()})
     |> filter(fn: (r) => r._field == "{self.data_field}" and r.sensorid == "{self.sensor_id}")
-    |> aggregateWindow(every: 5m, fn: mean)"""
+    |> aggregateWindow(every: {aggregation.interval_min}m, fn: {aggregation.function})"""
         result = self.query_api.query(query)
 
         assert len(result) == 1
@@ -280,17 +303,28 @@ from(bucket: "appartment")
         )
         ax.grid(True)
 
+        start_of_day = start.replace(hour=0, minute=0, second=0, microsecond=0)
         if stop - start <= datetime.timedelta(hours=24):
             # get xtick positions as multiples of 6 hours and format as hour:minute
             interval = datetime.timedelta(hours=6)
             format_str = "%H:%M"
-        else:
+            start_of_labels = start_of_day
+        elif (stop - start) / datetime.timedelta(days=1) < self.width / (
+            font["size"] * 4
+        ):
             # get xtick positions as multiples of 24 hours and format as day of the week
-            interval = datetime.timedelta(hours=24)
+            interval = datetime.timedelta(days=1)
             format_str = "%a %d."
+            start_of_labels = start_of_day
+        else:
+            # get xtick positions as multiples of 7 days and format as date
+            interval = datetime.timedelta(days=7)
+            format_str = "%d. %b"
+            start_of_labels = start_of_day - datetime.timedelta(
+                days=start_of_day.weekday()
+            )
 
-        start_of_day = start.replace(hour=0, minute=0, second=0, microsecond=0)
-        p = start_of_day
+        p = start_of_labels
         xticks = []
         while p < stop:
             if p > start:
@@ -338,12 +372,26 @@ from(bucket: "appartment")
         start = timestamp - datetime.timedelta(hours=self.history_h)
         stop = timestamp
 
-        trend = self.get_trend_data(start=start, stop=stop)
-        times, values = zip(*trend)
+        curves = []
 
-        fig, ax = self._create_plot(start, stop, min(values), max(values))
+        for aggregation in self.aggregations:
+            trend = self.get_trend_data(start=start, stop=stop, aggregation=aggregation)
+            times, values = zip(*trend)
+            curves.append((times, values))
 
-        ax.plot(times, values, color="black", linewidth=2)
+        min_value = min(min(values) for _, values in curves)
+        max_value = max(max(values) for _, values in curves)
+
+        fig, ax = self._create_plot(start, stop, min_value, max_value)
+
+        for (times, values), aggregation in zip(curves, self.aggregations):
+            ax.plot(
+                times,
+                values,
+                color="black",
+                linewidth=aggregation.linewidth,
+                linestyle=aggregation.linestyle,
+            )
 
         return self._fig_to_img(fig)
 
