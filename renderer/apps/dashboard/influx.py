@@ -197,8 +197,8 @@ from(bucket: "appartment")
 
 @dataclass
 class TrendAggregation:
-    interval_min: int
-    function: str
+    interval_min: int = 5
+    function: str = "mean"
     linewidth: int = 2
     linestyle: str = "solid"
 
@@ -226,9 +226,7 @@ class InfluxDBTrend(InfluxDBWidget):
         if aggregations is not None:
             self.aggregations = aggregations
         else:
-            self.aggregations = [
-                TrendAggregation(interval_min=5, function="mean"),
-            ]
+            self.aggregations = [TrendAggregation()]
         self.history_h = history_h
         self.font_size = font_size
 
@@ -243,8 +241,10 @@ class InfluxDBTrend(InfluxDBWidget):
         self,
         start: datetime.datetime,
         stop: datetime.datetime,
-        aggregation: TrendAggregation,
+        aggregation: TrendAggregation | None = None,
     ) -> List[tuple[datetime.datetime, float]]:
+        if aggregation is None:
+            aggregation = TrendAggregation()
         if aggregation.function not in ["mean", "max", "min", "median"]:
             raise ValueError(
                 f"Unsupported aggregation function: {aggregation.function}"
