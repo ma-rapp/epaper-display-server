@@ -80,7 +80,7 @@ class WeatherWidget(Widget):
             86: "wi-rain-mix",  # Snow showers: heavy
             95: "wi-thunderstorm",  # Thunderstorm with: slight or moderate
             96: "wi-thunderstorm",  # Thunderstorm with slight hail
-            97: "wi-thunderstorm",  # Thunderstorm with heavy hail
+            99: "wi-thunderstorm",  # Thunderstorm with heavy hail
         }
 
         if code not in mapping:
@@ -125,7 +125,7 @@ class WeatherWidget(Widget):
             86: "Schneeschauer\n",  # Snow showers: heavy
             95: "Gewitter\n",  # Thunderstorm with: slight or moderate
             96: "Gewitter,\nHagel",  # Thunderstorm with slight hail
-            97: "Gewitter,\nstarker Hagel",  # Thunderstorm with heavy hail
+            99: "Gewitter,\nstarker Hagel",  # Thunderstorm with heavy hail
         }
         return mapping.get(code, "???\n")
 
