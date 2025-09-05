@@ -180,18 +180,10 @@ class HikingQuizApp(App):
                 return stage
         raise ValueError(f"could not determine stage for {elapsed_hours} elapsed hours")
 
-    def _get_track_info(self, track_name: str) -> Dict:
-        info_attributes = [
-            "year",
-            "month",
-            "country",
-            "state",
-            "city",
-            "landmarks",
-        ]
+    def _get_track_info(self, track_name: str, attributes: list[str]) -> Dict:
         track_path = self.data_folder / "tracks" / track_name
         track = Track.from_folder(track_path)
-        return {attr: getattr(track, attr) for attr in info_attributes}
+        return {attr: getattr(track, attr) for attr in attributes}
 
     def _format_list(self, elements: List[str]) -> str:
         if len(elements) <= 2:
@@ -392,7 +384,7 @@ class HikingQuizApp(App):
         screen = self.create_empty_screen()
         screen.paste(image, (0, 0))
 
-        track_info = self._get_track_info(track_name)
+        track_info = self._get_track_info(track_name, stage.get("info", []))
         lines = self._format_track_info_lines(track_info, stage)
         self._draw_description_lines(screen, lines, position=description_position)
 
