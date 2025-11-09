@@ -1,6 +1,7 @@
 import csv
 import datetime
 import logging
+import multiprocessing.pool
 import pathlib
 import random
 from typing import Any, Dict, List, Tuple
@@ -20,6 +21,7 @@ class HikingQuizApp(App):
         super().__init__("hiking_quiz")
         self.data_folder = pathlib.Path(__file__).parent / "data"
         self.logger = logging.getLogger(__name__)
+        self.plot_timeout_seconds = 60 * 5  # configurable timeout in seconds
 
     def get_nb_screens(self) -> int:
         return 3
@@ -365,7 +367,20 @@ class HikingQuizApp(App):
                 fill=0,
             )
 
-    def plot(
+    def _plot_error_message(self, message: str) -> Image.Image:
+        screen = self.create_empty_screen()
+
+        font = ImageFont.truetype(self.data_folder / "Font.ttc", size=32)
+        draw = ImageDraw.Draw(screen)
+        w, h = screen.size
+        text_width = font.getlength(message)
+        text_height = font.size
+        x = (w - text_width) // 2
+        y = (h - text_height) // 2
+        draw.text((x, y), message, font=font, fill=0)
+        return screen
+
+    def _do_plot(
         self, track_name: str, stage: Dict, description_position: str
     ) -> Image.Image:
         track_path = self.data_folder / "tracks" / track_name
@@ -387,8 +402,30 @@ class HikingQuizApp(App):
         track_info = self._get_track_info(track_name, stage.get("info", []))
         lines = self._format_track_info_lines(track_info, stage)
         self._draw_description_lines(screen, lines, position=description_position)
-
         return screen
+
+    def plot(
+        self, track_name: str, stage: Dict, description_position: str
+    ) -> tuple[Image.Image, bool]:
+        """
+        Plot the hiking quiz screen with a timeout.
+
+        Returns:
+            (Image.Image, bool): The plotted image and success flag.
+        """
+        try:
+            with multiprocessing.pool.Pool(processes=1) as pool:
+                result = pool.apply_async(
+                    self._do_plot, (track_name, stage, description_position)
+                )
+                screen = result.get(timeout=self.plot_timeout_seconds)
+                return screen, True
+        except multiprocessing.TimeoutError:
+            self.logger.warning("Plotting timed out")
+            return self._plot_error_message("Plotting timed out"), False
+        except Exception as e:
+            self.logger.error(f"Plotting failed: {e}")
+            return self._plot_error_message("Plotting failed"), False
 
     def render(self, timestamp: datetime.datetime, folder: pathlib.Path) -> None:
         week, elapsed_hours = self.parse_interval(timestamp)
@@ -420,12 +457,15 @@ class HikingQuizApp(App):
 
         description_positions = ["bottom_right", "top_right", "bottom_left"]
 
+        all_successful = True
         for i, description_position in enumerate(description_positions):
-            screen = self.plot(
+            screen, success = self.plot(
                 track_name, stage, description_position=description_position
             )
-
+            if not success:
+                all_successful = False
             screen.save(folder / f"{i}.png")
 
-        with open(last_render_info_filename, "w") as f:
-            yaml.safe_dump(render_info, f)
+        if all_successful:
+            with open(last_render_info_filename, "w") as f:
+                yaml.safe_dump(render_info, f)
