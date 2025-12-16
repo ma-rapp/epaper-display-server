@@ -58,7 +58,7 @@ class WeatherWidget(Widget):
             2: "wi-day-cloudy",  # Partly cloudy
             3: "wi-cloudy",  # Overcast
             45: "wi-fog",  # Fog
-            49: "wi-fog",  # Depositing rime fog
+            48: "wi-fog",  # Depositing rime fog
             51: "wi-day-showers",  # Drizzle: Light
             53: "wi-day-showers",  # Drizzle: Moderate
             55: "wi-showers",  # Drizzle: Dense
