@@ -36,3 +36,13 @@ def test_long_hyphenated_word():
         "word and",
         "short text",
     ]
+
+
+def test_long_unsplittable_word():
+    text = "Thisisaverylongunsplittableword and short text"
+    maxwidth = 15  # characters
+
+    assert splitline_evenly(text, measure_fn=len, maxwidth=maxwidth) == [
+        "Thisisaverylongunsplittableword",
+        "and short text",
+    ]
