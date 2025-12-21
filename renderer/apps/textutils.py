@@ -53,7 +53,7 @@ def splitline_evenly(
             current_line = word
             current_width = word_width
 
-    if current_line:
+    if current_line or not lines:
         lines.append(current_line.rstrip())
 
     if maxwidth > 1:
