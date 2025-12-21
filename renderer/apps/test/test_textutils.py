@@ -11,6 +11,17 @@ def test_split_simple():
     ]
 
 
+def test_split_empty_string():
+    """
+    This test case uses an empty string.
+    It should return a list with an empty string.
+    """
+    text = ""
+    maxwidth = 10  # characters
+
+    assert splitline_evenly(text, measure_fn=len, maxwidth=maxwidth) == [""]
+
+
 def test_split_barely_does_not_fit():
     """
     This test case uses a string that just barely does not fit.
