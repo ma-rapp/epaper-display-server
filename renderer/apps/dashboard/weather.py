@@ -202,29 +202,135 @@ class WeatherWidget(Widget):
 
         return daily_dataframe, hourly_dataframe
 
-    def plot_rain_diagram(
-        self, hourly_forecast: pd.DataFrame, height: int, width: int, max_rain: float
+    def _plot_rain_diagram(
+        self,
+        hourly_forecast_day: pd.DataFrame,
+        height: int,
+        width: int,
+        max_rain: float,
     ) -> Image.Image:
         screen = Image.new("1", (width, height), 255)
         draw = ImageDraw.Draw(screen)
 
-        # draw axis
-        draw.line([(0, height - 1), (width - 1, height - 1)], fill=0)
-        # draw.line([(0, 0), (0, height - 1)], fill=0)
+        if hourly_forecast_day["precipitation"].max() > 0:
+            # draw axis
+            draw.line([(0, height - 1), (width - 1, height - 1)], fill=0)
+            # draw.line([(0, 0), (0, height - 1)], fill=0)
 
-        bin_borders = np.linspace(1, width, len(hourly_forecast) + 1)
-        for i, rain in enumerate(hourly_forecast["precipitation"]):
-            x_left = bin_borders[i]
-            x_right = bin_borders[i + 1] - 1
-            bar_height = rain / max_rain * height
-            if bar_height > 0:
-                bar_height = max(
-                    1, bar_height
-                )  # Make sure bar is at least 1 pixel high
+            bin_borders = np.linspace(1, width, len(hourly_forecast_day) + 1)
+            for i, rain in enumerate(hourly_forecast_day["precipitation"]):
+                x_left = bin_borders[i]
+                x_right = bin_borders[i + 1] - 1
+                bar_height = rain / max_rain * height
+                if bar_height > 0:
+                    bar_height = max(
+                        1, bar_height
+                    )  # Make sure bar is at least 1 pixel high
 
-                draw.rectangle(
-                    [(x_left, height - 1 - bar_height), (x_right, height - 1)], fill=0
-                )
+                    draw.rectangle(
+                        [(x_left, height - 1 - bar_height), (x_right, height - 1)],
+                        fill=0,
+                    )
+
+        return screen
+
+    def _plot_uv_index(self, uv_index: float, width: int) -> Image.Image:
+        height = self.text_font_size * 1.2
+        screen = Image.new("1", (int(width), int(height)), 255)
+        draw = ImageDraw.Draw(screen)
+
+        uv_index = int(round(uv_index, 0))
+        font = ImageFont.truetype(
+            self.data_folder / "Font.ttc", size=self.text_font_size
+        )
+        uv_text_kwargs = dict(
+            xy=(width // 2 - 2, font.size), text="UV:", font=font, anchor="rb"
+        )
+        draw.text(**uv_text_kwargs)
+        uv_left, _, _, _ = draw.textbbox(**uv_text_kwargs)
+        # half sun left of "UV": half circle, open to the right, with 5 rays
+        sun_radius = font.size * 0.2
+        ray_offset = font.size * 0.1
+        ray_length = font.size * 0.2
+        center_x = uv_left - 2.5
+        center_y = 0.6 * font.size
+        draw.pieslice(
+            [
+                center_x - sun_radius,
+                center_y - sun_radius,
+                center_x + sun_radius,
+                center_y + sun_radius,
+            ],
+            start=90,
+            end=270,
+            fill=0,
+        )
+        # rays
+        for i in range(5):
+            angle = 90 + i * 45
+            x_start = center_x + np.cos(np.radians(angle)) * (sun_radius + ray_offset)
+            y_start = center_y + np.sin(np.radians(angle)) * (sun_radius + ray_offset)
+            x_end = center_x + np.cos(np.radians(angle)) * (
+                sun_radius + ray_offset + ray_length
+            )
+            y_end = center_y + np.sin(np.radians(angle)) * (
+                sun_radius + ray_offset + ray_length
+            )
+            draw.line([(x_start, y_start), (x_end, y_end)], fill=0, width=1)
+
+        # draw UV index
+        uv_mb_pos = (width // 2 + 0.7 * font.size, font.size)
+        if uv_index <= 2:
+            # regular font
+            draw.text(uv_mb_pos, f"{uv_index:.0f}", font=font, anchor="mb")
+        elif uv_index <= 5:
+            # fake bold font
+            draw.text(uv_mb_pos, f"{uv_index:.0f}", font=font, anchor="mb")
+            draw.text(
+                (uv_mb_pos[0] + 1, uv_mb_pos[1]),
+                f"{uv_index:.0f}",
+                font=font,
+                anchor="mb",
+            )
+        elif uv_index <= 7:
+            # white font in rounded black box
+            box_width = font.size * 1.5
+            draw.rounded_rectangle(
+                [
+                    uv_mb_pos[0] - box_width / 2,
+                    uv_mb_pos[1] - font.size * 1.0,
+                    uv_mb_pos[0] + box_width / 2,
+                    uv_mb_pos[1] + font.size * 0.2,
+                ],
+                fill=0,
+                radius=4,
+                outline=0,
+                width=0,
+            )
+            draw.text(uv_mb_pos, f"{uv_index:.0f}", font=font, anchor="mb", fill=1)
+        else:
+            # bold white font in rounded red box
+            box_width = font.size * 1.5
+            draw.rounded_rectangle(
+                [
+                    uv_mb_pos[0] - box_width / 2,
+                    uv_mb_pos[1] - font.size * 1.0,
+                    uv_mb_pos[0] + box_width / 2,
+                    uv_mb_pos[1] + font.size * 0.2,
+                ],
+                fill=0,
+                radius=4,
+                outline=0,
+                width=0,
+            )
+            draw.text(uv_mb_pos, f"{uv_index:.0f}", font=font, anchor="mb", fill=1)
+            draw.text(
+                (uv_mb_pos[0] + 1, uv_mb_pos[1]),
+                f"{uv_index:.0f}",
+                font=font,
+                anchor="mb",
+                fill=1,
+            )
 
         return screen
 
@@ -295,17 +401,16 @@ class WeatherWidget(Widget):
                 pos += int(font.size * 1.2)
             elif info == "precipitation_hourly":
                 rain_diagram_height = 25
-                if hourly_forecast_day["precipitation"].max() > 0:
-                    rain_diagram = self.plot_rain_diagram(
-                        hourly_forecast_day,
-                        height=rain_diagram_height,
-                        width=int(width * 0.8),
-                        max_rain=10,
-                    )
-                    screen.paste(
-                        rain_diagram, (width // 2 - rain_diagram.width // 2, int(pos))
-                    )
-                pos += rain_diagram_height
+                rain_diagram = self._plot_rain_diagram(
+                    hourly_forecast_day,
+                    height=rain_diagram_height,
+                    width=int(width * 0.8),
+                    max_rain=10,
+                )
+                screen.paste(
+                    rain_diagram, (width // 2 - rain_diagram.width // 2, int(pos))
+                )
+                pos += rain_diagram.height
             elif info == "wind":
                 if day_info["wind_speed_10m_max"] > 20:
                     font = ImageFont.truetype(
@@ -331,128 +436,11 @@ class WeatherWidget(Widget):
                     )
                 pos += int(font.size * 1.2)
             elif info == "uv_index":
-                uv_index = int(round(day_info["uv_index_max"], 0))
-                font = ImageFont.truetype(
-                    self.data_folder / "Font.ttc", size=self.text_font_size
+                uv_index_plot = self._plot_uv_index(
+                    day_info["uv_index_max"], width=width
                 )
-                uv_text_kwargs = dict(
-                    xy=(width // 2 - 2, pos + font.size),
-                    text="UV:",
-                    font=font,
-                    anchor="rb",
-                )
-                draw.text(**uv_text_kwargs)
-                uv_left, _, _, _ = draw.textbbox(**uv_text_kwargs)
-                # half sun left of "UV": half circle, open to the right, with 5 rays
-                sun_radius = font.size * 0.2
-                ray_offset = font.size * 0.1
-                ray_length = font.size * 0.2
-                center_x = uv_left - 2.5
-                center_y = pos + 0.6 * font.size
-                draw.pieslice(
-                    [
-                        center_x - sun_radius,
-                        center_y - sun_radius,
-                        center_x + sun_radius,
-                        center_y + sun_radius,
-                    ],
-                    start=90,
-                    end=270,
-                    fill=0,
-                )
-                # rays
-                for i in range(5):
-                    angle = 90 + i * 45
-                    x_start = center_x + np.cos(np.radians(angle)) * (
-                        sun_radius + ray_offset
-                    )
-                    y_start = center_y + np.sin(np.radians(angle)) * (
-                        sun_radius + ray_offset
-                    )
-                    x_end = center_x + np.cos(np.radians(angle)) * (
-                        sun_radius + ray_offset + ray_length
-                    )
-                    y_end = center_y + np.sin(np.radians(angle)) * (
-                        sun_radius + ray_offset + ray_length
-                    )
-                    draw.line([(x_start, y_start), (x_end, y_end)], fill=0, width=1)
-
-                # draw UV index
-                uv_mb_pos = (width // 2 + 0.7 * font.size, pos + font.size)
-                if uv_index <= 2:
-                    # regular font
-                    draw.text(
-                        uv_mb_pos,
-                        f"{uv_index:.0f}",
-                        font=font,
-                        anchor="mb",
-                    )
-                elif uv_index <= 5:
-                    # fake bold font
-                    draw.text(
-                        uv_mb_pos,
-                        f"{uv_index:.0f}",
-                        font=font,
-                        anchor="mb",
-                    )
-                    draw.text(
-                        (uv_mb_pos[0] + 1, uv_mb_pos[1]),
-                        f"{uv_index:.0f}",
-                        font=font,
-                        anchor="mb",
-                    )
-                elif uv_index <= 7:
-                    # white font in rounded black box
-                    box_width = font.size * 1.5
-                    draw.rounded_rectangle(
-                        [
-                            uv_mb_pos[0] - box_width / 2,
-                            uv_mb_pos[1] - font.size * 1.0,
-                            uv_mb_pos[0] + box_width / 2,
-                            uv_mb_pos[1] + font.size * 0.2,
-                        ],
-                        fill=0,
-                        radius=4,
-                        outline=0,
-                        width=0,
-                    )
-                    draw.text(
-                        uv_mb_pos,
-                        f"{uv_index:.0f}",
-                        font=font,
-                        anchor="mb",
-                        fill=1,
-                    )
-                else:
-                    # bold white font in rounded red box
-                    box_width = font.size * 1.5
-                    draw.rounded_rectangle(
-                        [
-                            uv_mb_pos[0] - box_width / 2,
-                            uv_mb_pos[1] - font.size * 1.0,
-                            uv_mb_pos[0] + box_width / 2,
-                            uv_mb_pos[1] + font.size * 0.2,
-                        ],
-                        fill=0,
-                        radius=4,
-                        outline=0,
-                        width=0,
-                    )
-                    draw.text(
-                        uv_mb_pos,
-                        f"{uv_index:.0f}",
-                        font=font,
-                        anchor="mb",
-                        fill=1,
-                    )
-                    draw.text(
-                        (uv_mb_pos[0] + 1, uv_mb_pos[1]),
-                        f"{uv_index:.0f}",
-                        font=font,
-                        anchor="mb",
-                        fill=1,
-                    )
-                pos += int(font.size * 1.2)
+                screen.paste(uv_index_plot, (0, int(pos)))
+                pos += uv_index_plot.height
             elif info == "spacer":
                 pos += 10
             else:
