@@ -21,6 +21,7 @@ class WeatherWidget(Widget):
         latitude: float,
         longitude: float,
         days: int,
+        infos: list[str] | None = None,
         header_font_size: int = 22,
         text_font_size: int = 16,
     ) -> None:
@@ -28,6 +29,7 @@ class WeatherWidget(Widget):
         self.latitude = latitude
         self.longitude = longitude
         self.days = days
+        self.infos = infos if infos is not None else []
         self.header_font_size = header_font_size
         self.text_font_size = text_font_size
 
@@ -146,6 +148,7 @@ class WeatherWidget(Widget):
             "precipitation_sum",
             "precipitation_hours",
             "wind_speed_10m_max",
+            "uv_index_max",
         ]
         hourly_datapoints = [
             "weathercode",
@@ -242,83 +245,228 @@ class WeatherWidget(Widget):
         )
         pos += int(font.size)
 
-        weathercode_day = self.get_weathercode_day(hourly_forecast_day)
-        self.logger.debug(f"Day {day_info['date']}: Weather code {weathercode_day}")
-        icon = self.get_weathercode_icon(weathercode_day, size=int(width * 0.8))
-        screen.paste(icon, (width // 2 - icon.width // 2, pos), icon)
-        pos += icon.height
+        for info in self.infos:
+            if info == "weather_symbol":
+                weathercode_day = self.get_weathercode_day(hourly_forecast_day)
+                self.logger.debug(
+                    f"Day {day_info['date']}: Weather code {weathercode_day}"
+                )
+                icon = self.get_weathercode_icon(weathercode_day, size=int(width * 0.8))
+                screen.paste(icon, (width // 2 - icon.width // 2, pos), icon)
+                pos += icon.height
+            elif info == "weather_summary":
+                weathercode_day = self.get_weathercode_day(hourly_forecast_day)
+                font = ImageFont.truetype(
+                    self.data_folder / "Font.ttc", size=self.text_font_size
+                )
+                weathercode_text = self.get_weathercode_text(weathercode_day)
+                for line in weathercode_text.split("\n"):
+                    draw.text(
+                        (width // 2, pos + font.size), line, font=font, anchor="mb"
+                    )
+                    pos += int(font.size * 1.2)
+            elif info == "temperature_min_max":
+                font = ImageFont.truetype(
+                    self.data_folder / "Font.ttc", size=self.text_font_size
+                )
+                draw.text(
+                    (width // 2, pos + font.size),
+                    f"{day_info['temperature_2m_min']:.0f}°C / {day_info['temperature_2m_max']:.0f}°C",
+                    font=font,
+                    anchor="mb",
+                )
+                pos += int(font.size * 1.2)
+            elif info == "precipitation_total":
+                font = ImageFont.truetype(
+                    self.data_folder / "Font.ttc", size=self.text_font_size
+                )
+                if day_info["precipitation_sum"] > 0:
+                    if day_info["precipitation_sum"] < 1:
+                        formatted_precipitation = f"{day_info['precipitation_sum']:.1f}"
+                    else:
+                        formatted_precipitation = f"{day_info['precipitation_sum']:.0f}"
+                    draw.text(
+                        (width // 2, pos + font.size),
+                        # f"{formatted_precipitation} l/m² ({day_info['precipitation_hours']:.0f}h)",
+                        f"{formatted_precipitation} l/m²",
+                        font=font,
+                        anchor="mb",
+                    )
+                pos += int(font.size * 1.2)
+            elif info == "precipitation_hourly":
+                rain_diagram_height = 25
+                if hourly_forecast_day["precipitation"].max() > 0:
+                    rain_diagram = self.plot_rain_diagram(
+                        hourly_forecast_day,
+                        height=rain_diagram_height,
+                        width=int(width * 0.8),
+                        max_rain=10,
+                    )
+                    screen.paste(
+                        rain_diagram, (width // 2 - rain_diagram.width // 2, int(pos))
+                    )
+                pos += rain_diagram_height
+            elif info == "wind":
+                if day_info["wind_speed_10m_max"] > 20:
+                    font = ImageFont.truetype(
+                        self.data_folder / "Font.ttc", size=self.text_font_size
+                    )
+                    wind_img = Image.open(
+                        self.data_folder
+                        / "weather-icons"
+                        / "png"
+                        / "wi-strong-wind.png"
+                    )
+                    wind_img.thumbnail((40, 40))
+                    screen.paste(
+                        wind_img,
+                        (2, int(pos + 0.7 * font.size) - wind_img.height // 2),
+                        wind_img,
+                    )
+                    draw.text(
+                        (2 + wind_img.width, pos + font.size),
+                        f"{day_info['wind_speed_10m_max']:.0f} km/h",
+                        font=font,
+                        anchor="lb",
+                    )
+                pos += int(font.size * 1.2)
+            elif info == "uv_index":
+                uv_index = int(round(day_info["uv_index_max"], 0))
+                font = ImageFont.truetype(
+                    self.data_folder / "Font.ttc", size=self.text_font_size
+                )
+                uv_text_kwargs = dict(
+                    xy=(width // 2 - 2, pos + font.size),
+                    text="UV:",
+                    font=font,
+                    anchor="rb",
+                )
+                draw.text(**uv_text_kwargs)
+                uv_left, _, _, _ = draw.textbbox(**uv_text_kwargs)
+                # half sun left of "UV": half circle, open to the right, with 5 rays
+                sun_radius = font.size * 0.2
+                ray_offset = font.size * 0.1
+                ray_length = font.size * 0.2
+                center_x = uv_left - 2.5
+                center_y = pos + 0.6 * font.size
+                draw.pieslice(
+                    [
+                        center_x - sun_radius,
+                        center_y - sun_radius,
+                        center_x + sun_radius,
+                        center_y + sun_radius,
+                    ],
+                    start=90,
+                    end=270,
+                    fill=0,
+                )
+                # rays
+                for i in range(5):
+                    angle = 90 + i * 45
+                    x_start = center_x + np.cos(np.radians(angle)) * (
+                        sun_radius + ray_offset
+                    )
+                    y_start = center_y + np.sin(np.radians(angle)) * (
+                        sun_radius + ray_offset
+                    )
+                    x_end = center_x + np.cos(np.radians(angle)) * (
+                        sun_radius + ray_offset + ray_length
+                    )
+                    y_end = center_y + np.sin(np.radians(angle)) * (
+                        sun_radius + ray_offset + ray_length
+                    )
+                    draw.line([(x_start, y_start), (x_end, y_end)], fill=0, width=1)
 
-        font = ImageFont.truetype(
-            self.data_folder / "Font.ttc", size=self.text_font_size
-        )
-        weathercode_text = self.get_weathercode_text(weathercode_day)
-        for line in weathercode_text.split("\n"):
-            draw.text((width // 2, pos + font.size), line, font=font, anchor="mb")
-            pos += int(font.size * 1.2)
-        pos += 10
-
-        font = ImageFont.truetype(
-            self.data_folder / "Font.ttc", size=self.text_font_size
-        )
-        draw.text(
-            (width // 2, pos + font.size),
-            f"{day_info['temperature_2m_min']:.0f}°C / {day_info['temperature_2m_max']:.0f}°C",
-            font=font,
-            anchor="mb",
-        )
-        pos += int(font.size * 1.2)
-        pos += 5
-
-        font = ImageFont.truetype(
-            self.data_folder / "Font.ttc", size=self.text_font_size
-        )
-        if day_info["precipitation_sum"] > 0:
-            if day_info["precipitation_sum"] < 1:
-                formatted_precipitation = f"{day_info['precipitation_sum']:.1f}"
+                # draw UV index
+                uv_mb_pos = (width // 2 + 0.7 * font.size, pos + font.size)
+                if uv_index <= 2:
+                    # regular font
+                    draw.text(
+                        uv_mb_pos,
+                        f"{uv_index:.0f}",
+                        font=font,
+                        anchor="mb",
+                    )
+                elif uv_index <= 5:
+                    # fake bold font
+                    draw.text(
+                        uv_mb_pos,
+                        f"{uv_index:.0f}",
+                        font=font,
+                        anchor="mb",
+                    )
+                    draw.text(
+                        (uv_mb_pos[0] + 1, uv_mb_pos[1]),
+                        f"{uv_index:.0f}",
+                        font=font,
+                        anchor="mb",
+                    )
+                elif uv_index <= 7:
+                    # white font in rounded black box
+                    box_width = font.size * 1.5
+                    draw.rounded_rectangle(
+                        [
+                            uv_mb_pos[0] - box_width / 2,
+                            uv_mb_pos[1] - font.size * 1.0,
+                            uv_mb_pos[0] + box_width / 2,
+                            uv_mb_pos[1] + font.size * 0.2,
+                        ],
+                        fill=0,
+                        radius=4,
+                        outline=0,
+                        width=0,
+                    )
+                    draw.text(
+                        uv_mb_pos,
+                        f"{uv_index:.0f}",
+                        font=font,
+                        anchor="mb",
+                        fill=1,
+                    )
+                else:
+                    # bold white font in rounded red box
+                    box_width = font.size * 1.5
+                    draw.rounded_rectangle(
+                        [
+                            uv_mb_pos[0] - box_width / 2,
+                            uv_mb_pos[1] - font.size * 1.0,
+                            uv_mb_pos[0] + box_width / 2,
+                            uv_mb_pos[1] + font.size * 0.2,
+                        ],
+                        fill=0,
+                        radius=4,
+                        outline=0,
+                        width=0,
+                    )
+                    draw.text(
+                        uv_mb_pos,
+                        f"{uv_index:.0f}",
+                        font=font,
+                        anchor="mb",
+                        fill=1,
+                    )
+                    draw.text(
+                        (uv_mb_pos[0] + 1, uv_mb_pos[1]),
+                        f"{uv_index:.0f}",
+                        font=font,
+                        anchor="mb",
+                        fill=1,
+                    )
+                pos += int(font.size * 1.2)
+            elif info == "spacer":
+                pos += 10
             else:
-                formatted_precipitation = f"{day_info['precipitation_sum']:.0f}"
-            draw.text(
-                (width // 2, pos + font.size),
-                # f"{formatted_precipitation} l/m² ({day_info['precipitation_hours']:.0f}h)",
-                f"{formatted_precipitation} l/m²",
-                font=font,
-                anchor="mb",
-            )
-        pos += int(font.size * 1.2)
-
-        rain_diagram_height = 25
-        if hourly_forecast_day["precipitation"].max() > 0:
-            rain_diagram = self.plot_rain_diagram(
-                hourly_forecast_day,
-                height=rain_diagram_height,
-                width=int(width * 0.8),
-                max_rain=10,
-            )
-            screen.paste(rain_diagram, (width // 2 - rain_diagram.width // 2, int(pos)))
-        pos += rain_diagram_height
-        pos += 5
-
-        if day_info["wind_speed_10m_max"] > 20:
-            font = ImageFont.truetype(
-                self.data_folder / "Font.ttc", size=self.text_font_size
-            )
-            wind_img = Image.open(
-                self.data_folder / "weather-icons" / "png" / "wi-strong-wind.png"
-            )
-            wind_img.thumbnail((40, 40))
-            screen.paste(
-                wind_img,
-                (2, int(pos + 0.7 * font.size) - wind_img.height // 2),
-                wind_img,
-            )
-            draw.text(
-                (2 + wind_img.width, pos + font.size),
-                f"{day_info['wind_speed_10m_max']:.0f} km/h",
-                font=font,
-                anchor="lb",
-            )
-        pos += int(font.size * 1.2)
-        pos += 5
+                self.logger.warning(f"Unknown info type: {info}")
+                font = ImageFont.truetype(
+                    self.data_folder / "Font.ttc", size=self.text_font_size
+                )
+                draw.text(
+                    (width // 2, pos + font.size),
+                    info,
+                    font=font,
+                    anchor="mb",
+                )
+                pos += int(font.size * 1.2)
 
         return screen
 

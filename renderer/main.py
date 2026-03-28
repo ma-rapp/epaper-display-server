@@ -42,6 +42,17 @@ def main():
                             latitude=48.74,
                             longitude=9.31,
                             days=7,
+                            infos=[
+                                "weather_symbol",
+                                "weather_summary",
+                                "spacer",
+                                "temperature_min_max",
+                                "spacer",
+                                "uv_index",
+                                "spacer",
+                                "precipitation_total",
+                                "precipitation_hourly",
+                            ],
                         ),
                     ]
                 ),
