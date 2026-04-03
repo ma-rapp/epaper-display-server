@@ -158,23 +158,31 @@ class HikingQuizApp(App):
                 "draw_major_level_labels": True,
                 "info": ["country", "year", "state"],
             },
-            4 * 24 + 12: {  # Friday afternoon: add info: month
+            4 * 24 + 12: {  # Friday afternoon: add info: day and month
                 "add_scale": True,
                 "draw_topo": True,
                 "draw_major_level_labels": True,
-                "info": ["country", "year", "state", "month"],
+                "info": ["country", "year", "state", "month", "day"],
             },
             5 * 24: {  # Saturday: add info: city
                 "add_scale": True,
                 "draw_topo": True,
                 "draw_major_level_labels": True,
-                "info": ["country", "year", "state", "month", "city"],
+                "info": ["country", "year", "state", "month", "day", "city"],
             },
             6 * 24: {  # Sunday: add info: landmarks
                 "add_scale": True,
                 "draw_topo": True,
                 "draw_major_level_labels": True,
-                "info": ["country", "year", "state", "month", "city", "landmarks"],
+                "info": [
+                    "country",
+                    "year",
+                    "state",
+                    "month",
+                    "day",
+                    "city",
+                    "landmarks",
+                ],
             },
         }
         for hours, stage in sorted(stages_after_hours.items(), reverse=True):
@@ -209,6 +217,7 @@ class HikingQuizApp(App):
             "Dezember",
         ]
         formatters = {
+            "day": lambda day: f"{day}.",
             "month": lambda month: month_names[int(month) - 1],
         }
         default_formatter = str
@@ -216,7 +225,7 @@ class HikingQuizApp(App):
         date_str = " ".join(
             [
                 formatters.get(key, default_formatter)(track_info[key])
-                for key in ["month", "year"]
+                for key in ["day", "month", "year"]
                 if key in stage.get("info", [])
             ]
         )
