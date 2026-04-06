@@ -257,6 +257,9 @@ class WeatherWidget(Widget):
     def _plot_uv_index_number(
         self, uv_index: float, width: int, height: int
     ) -> Image.Image:
+        """
+        Plot only the UV index number and format it such that it illustrates the severity.
+        """
         screen = Image.new("1", (width, height), 255)
         draw = ImageDraw.Draw(screen)
 
@@ -319,6 +322,10 @@ class WeatherWidget(Widget):
         return screen
 
     def _plot_uv_index(self, uv_index: float, width: int) -> Image.Image:
+        """
+        Plot the UV index of today, annotated with text.
+        This is the complete information element.
+        """
         height = int(self.text_font_size * 1.2)
         screen = Image.new("1", (width, height), 255)
         draw = ImageDraw.Draw(screen)
