@@ -208,27 +208,47 @@ class WeatherWidget(Widget):
         height: int,
         width: int,
         max_rain: float,
+        timestamp: datetime.datetime,
     ) -> Image.Image:
         screen = Image.new("1", (width, height), 255)
         draw = ImageDraw.Draw(screen)
 
+        now_marker_height = 2  # px
         if hourly_forecast_day["precipitation"].max() > 0:
             # draw axis
-            draw.line([(0, height - 1), (width - 1, height - 1)], fill=0)
+            draw.line(
+                [
+                    (0, height - 1 - now_marker_height),
+                    (width - 1, height - 1 - now_marker_height),
+                ],
+                fill=0,
+            )
             # draw.line([(0, 0), (0, height - 1)], fill=0)
+
+            # draw marker about now
+            seconds_since_start_of_today = (
+                timestamp - timestamp.replace(hour=0, minute=0, second=0, microsecond=0)
+            ).total_seconds()
+            x_now = seconds_since_start_of_today / (24 * 3600) * width
+            draw.line(
+                [(x_now, height - 1), (x_now, height - 1 - now_marker_height)], fill=0
+            )
 
             bin_borders = np.linspace(1, width, len(hourly_forecast_day) + 1)
             for i, rain in enumerate(hourly_forecast_day["precipitation"]):
                 x_left = bin_borders[i]
                 x_right = bin_borders[i + 1] - 1
-                bar_height = rain / max_rain * height
+                bar_height = rain / max_rain * (height - now_marker_height)
                 if bar_height > 0:
                     bar_height = max(
                         1, bar_height
                     )  # Make sure bar is at least 1 pixel high
 
                     draw.rectangle(
-                        [(x_left, height - 1 - bar_height), (x_right, height - 1)],
+                        [
+                            (x_left, height - 1 - bar_height - now_marker_height),
+                            (x_right, height - 1 - now_marker_height),
+                        ],
                         fill=0,
                     )
 
@@ -335,7 +355,11 @@ class WeatherWidget(Widget):
         return screen
 
     def render_day(
-        self, day_info: pd.Series, hourly_forecast_day: pd.DataFrame, width: int
+        self,
+        day_info: pd.Series,
+        hourly_forecast_day: pd.DataFrame,
+        width: int,
+        timestamp: pd.Timestamp,
     ) -> Image.Image:
         locale.setlocale(locale.LC_ALL, "de_DE.UTF-8")
 
@@ -406,6 +430,7 @@ class WeatherWidget(Widget):
                     height=rain_diagram_height,
                     width=int(width * 0.8),
                     max_rain=10,
+                    timestamp=timestamp,
                 )
                 screen.paste(
                     rain_diagram, (width // 2 - rain_diagram.width // 2, int(pos))
@@ -471,7 +496,9 @@ class WeatherWidget(Widget):
                 (hourly_forecast["date"] >= day_info["date"])
                 & (hourly_forecast["date"] < day_info["date"] + pd.Timedelta(days=1))
             ]
-            day = self.render_day(day_info, hourly_forecast_day, int(day_width))
+            day = self.render_day(
+                day_info, hourly_forecast_day, int(day_width), timestamp=timestamp
+            )
             screen.paste(day, (int(i * day_width), 0))
             draw.line([(i * day_width, 0), (i * day_width, self.size[1])])
         draw.line([(self.size[0] - 1, 0), (self.size[0] - 1, self.size[1])])
