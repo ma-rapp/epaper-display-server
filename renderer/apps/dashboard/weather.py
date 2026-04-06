@@ -254,52 +254,19 @@ class WeatherWidget(Widget):
 
         return screen
 
-    def _plot_uv_index(self, uv_index: float, width: int) -> Image.Image:
-        height = self.text_font_size * 1.2
-        screen = Image.new("1", (int(width), int(height)), 255)
+    def _plot_uv_index_number(
+        self, uv_index: float, width: int, height: int
+    ) -> Image.Image:
+        """
+        Plot only the UV index number and format it such that it illustrates the severity.
+        """
+        screen = Image.new("1", (width, height), 255)
         draw = ImageDraw.Draw(screen)
 
-        uv_index = int(round(uv_index, 0))
         font = ImageFont.truetype(
             self.data_folder / "Font.ttc", size=self.text_font_size
         )
-        uv_text_kwargs = dict(
-            xy=(width // 2 - 2, font.size), text="UV:", font=font, anchor="rb"
-        )
-        draw.text(**uv_text_kwargs)
-        uv_left, _, _, _ = draw.textbbox(**uv_text_kwargs)
-        # half sun left of "UV": half circle, open to the right, with 5 rays
-        sun_radius = font.size * 0.2
-        ray_offset = font.size * 0.1
-        ray_length = font.size * 0.2
-        center_x = uv_left - 2.5
-        center_y = 0.6 * font.size
-        draw.pieslice(
-            [
-                center_x - sun_radius,
-                center_y - sun_radius,
-                center_x + sun_radius,
-                center_y + sun_radius,
-            ],
-            start=90,
-            end=270,
-            fill=0,
-        )
-        # rays
-        for i in range(5):
-            angle = 90 + i * 45
-            x_start = center_x + np.cos(np.radians(angle)) * (sun_radius + ray_offset)
-            y_start = center_y + np.sin(np.radians(angle)) * (sun_radius + ray_offset)
-            x_end = center_x + np.cos(np.radians(angle)) * (
-                sun_radius + ray_offset + ray_length
-            )
-            y_end = center_y + np.sin(np.radians(angle)) * (
-                sun_radius + ray_offset + ray_length
-            )
-            draw.line([(x_start, y_start), (x_end, y_end)], fill=0, width=1)
-
-        # draw UV index
-        uv_mb_pos = (width // 2 + 0.7 * font.size, font.size)
+        uv_mb_pos = (width // 2, font.size)
         if uv_index <= 2:
             # regular font
             draw.text(uv_mb_pos, f"{uv_index:.0f}", font=font, anchor="mb")
@@ -354,12 +321,69 @@ class WeatherWidget(Widget):
 
         return screen
 
+    def _plot_uv_index(self, uv_index: float, width: int) -> Image.Image:
+        """
+        Plot the UV index of today, annotated with text.
+        This is the complete information element.
+        """
+        height = int(self.text_font_size * 1.2)
+        screen = Image.new("1", (width, height), 255)
+        draw = ImageDraw.Draw(screen)
+
+        uv_index = int(round(uv_index, 0))
+        font = ImageFont.truetype(
+            self.data_folder / "Font.ttc", size=self.text_font_size
+        )
+        uv_text_kwargs = dict(
+            xy=(width // 2 - 2, font.size), text="UV:", font=font, anchor="rb"
+        )
+        draw.text(**uv_text_kwargs)
+        uv_left, _, _, _ = draw.textbbox(**uv_text_kwargs)
+        # half sun left of "UV": half circle, open to the right, with 5 rays
+        sun_radius = font.size * 0.2
+        ray_offset = font.size * 0.1
+        ray_length = font.size * 0.2
+        center_x = uv_left - 2.5
+        center_y = 0.6 * font.size
+        draw.pieslice(
+            [
+                center_x - sun_radius,
+                center_y - sun_radius,
+                center_x + sun_radius,
+                center_y + sun_radius,
+            ],
+            start=90,
+            end=270,
+            fill=0,
+        )
+        # rays
+        for i in range(5):
+            angle = 90 + i * 45
+            x_start = center_x + np.cos(np.radians(angle)) * (sun_radius + ray_offset)
+            y_start = center_y + np.sin(np.radians(angle)) * (sun_radius + ray_offset)
+            x_end = center_x + np.cos(np.radians(angle)) * (
+                sun_radius + ray_offset + ray_length
+            )
+            y_end = center_y + np.sin(np.radians(angle)) * (
+                sun_radius + ray_offset + ray_length
+            )
+            draw.line([(x_start, y_start), (x_end, y_end)], fill=0, width=1)
+
+        # draw UV index number
+        uv_index_number_width = int(font.size * 1.5)
+        uv_index_number = self._plot_uv_index_number(
+            uv_index, width=uv_index_number_width, height=height
+        )
+        screen.paste(uv_index_number, (width // 2 + 2, 0))
+
+        return screen
+
     def render_day(
         self,
         day_info: pd.Series,
         hourly_forecast_day: pd.DataFrame,
         width: int,
-        timestamp: pd.Timestamp,
+        timestamp: datetime.datetime,
     ) -> Image.Image:
         locale.setlocale(locale.LC_ALL, "de_DE.UTF-8")
 
