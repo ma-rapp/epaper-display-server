@@ -225,14 +225,18 @@ class WeatherWidget(Widget):
             )
             # draw.line([(0, 0), (0, height - 1)], fill=0)
 
-            # draw marker about now
-            seconds_since_start_of_today = (
-                timestamp - timestamp.replace(hour=0, minute=0, second=0, microsecond=0)
-            ).total_seconds()
-            x_now = seconds_since_start_of_today / (24 * 3600) * width
-            draw.line(
-                [(x_now, height - 1), (x_now, height - 1 - now_marker_height)], fill=0
-            )
+            # draw marker about now but just today, not for the next days
+            is_today = (hourly_forecast_day["date"].dt.date == timestamp.date()).any()
+            if is_today:
+                seconds_since_start_of_today = (
+                    timestamp
+                    - timestamp.replace(hour=0, minute=0, second=0, microsecond=0)
+                ).total_seconds()
+                x_now = seconds_since_start_of_today / (24 * 3600) * width
+                draw.line(
+                    [(x_now, height - 1), (x_now, height - 1 - now_marker_height)],
+                    fill=0,
+                )
 
             bin_borders = np.linspace(1, width, len(hourly_forecast_day) + 1)
             for i, rain in enumerate(hourly_forecast_day["precipitation"]):
