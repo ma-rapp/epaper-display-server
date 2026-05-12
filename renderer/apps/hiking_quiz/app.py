@@ -398,7 +398,7 @@ class HikingQuizApp(App):
             topo_land_path=self.data_folder / "topo-land",
             topo_water_path=self.data_folder / "topo-water",
             draw_partial_track=stage.get("draw_partial_track", 1.0),
-            track_halign="left" if "info" in stage else "center",
+            halign_ideal_centerline=0.7 / 2 if "info" in stage else 0.5,
             draw_topo=stage.get("draw_topo", False),
             draw_major_level_labels=stage.get("draw_major_level_labels", False),
             add_scale=stage.get("add_scale", False),
