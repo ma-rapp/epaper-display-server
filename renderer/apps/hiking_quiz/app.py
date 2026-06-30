@@ -128,53 +128,60 @@ class HikingQuizApp(App):
             for draw_partial_track in np.linspace(0, 1, (20 - 6) * 6 + 1)
         }
         stages_after_hours |= {
-            24: {  # Tuesday: add scale
+            24: {  # Tuesday morning: add scale
                 "add_scale": True,
+            },
+            24 + 12: {  # Tuesday afternoon: add people
+                "add_scale": True,
+                "info": ["who"],
             },
             2 * 24: {  # Wednesday morning: add topo
                 "add_scale": True,
                 "draw_topo": True,
+                "info": ["who"],
             },
             2 * 24 + 12: {  # Wednesday afternoon: add topo levels
                 "add_scale": True,
                 "draw_topo": True,
                 "draw_major_level_labels": True,
+                "info": ["who"],
             },
             3 * 24: {  # Thursday: add info: country
                 "add_scale": True,
                 "draw_topo": True,
                 "draw_major_level_labels": True,
-                "info": ["country"],
+                "info": ["who", "country"],
             },
             3 * 24 + 12: {  # Thursday afternoon: add info: year
                 "add_scale": True,
                 "draw_topo": True,
                 "draw_major_level_labels": True,
-                "info": ["country", "year"],
+                "info": ["who", "country", "year"],
             },
             4 * 24: {  # Friday: add info: state
                 "add_scale": True,
                 "draw_topo": True,
                 "draw_major_level_labels": True,
-                "info": ["country", "year", "state"],
+                "info": ["who", "country", "year", "state"],
             },
             4 * 24 + 12: {  # Friday afternoon: add info: day and month
                 "add_scale": True,
                 "draw_topo": True,
                 "draw_major_level_labels": True,
-                "info": ["country", "year", "state", "month", "day"],
+                "info": ["who", "country", "year", "state", "month", "day"],
             },
             5 * 24: {  # Saturday: add info: city
                 "add_scale": True,
                 "draw_topo": True,
                 "draw_major_level_labels": True,
-                "info": ["country", "year", "state", "month", "day", "city"],
+                "info": ["who", "country", "year", "state", "month", "day", "city"],
             },
             6 * 24: {  # Sunday: add info: landmarks
                 "add_scale": True,
                 "draw_topo": True,
                 "draw_major_level_labels": True,
                 "info": [
+                    "who",
                     "country",
                     "year",
                     "state",
@@ -190,9 +197,7 @@ class HikingQuizApp(App):
                 return stage
         raise ValueError(f"could not determine stage for {elapsed_hours} elapsed hours")
 
-    def _get_track_info(self, track_name: str, attributes: list[str]) -> Dict:
-        track_path = self.data_folder / "tracks" / track_name
-        track = Track.from_folder(track_path)
+    def _get_track_info(self, track: Track, attributes: list[str]) -> Dict:
         return {attr: getattr(track, attr) for attr in attributes}
 
     def _format_list(self, elements: List[str]) -> str:
@@ -222,6 +227,12 @@ class HikingQuizApp(App):
         }
         default_formatter = str
 
+        who_str = (
+            self._format_list(track_info["who"])
+            if "who" in stage.get("info", [])
+            else ""
+        )
+
         date_str = " ".join(
             [
                 formatters.get(key, default_formatter)(track_info[key])
@@ -243,12 +254,13 @@ class HikingQuizApp(App):
         else:
             landmarks_str = ""
 
-        lines = [date_str, location_str, landmarks_str]
+        lines = [who_str, date_str, location_str, landmarks_str]
         lines = [line for line in lines if line != ""]  # remove empty lines
 
-        lines_with_filler = [""] * (2 * len(lines) - 1)
-        lines_with_filler[::2] = lines
-        lines = lines_with_filler
+        if len(lines) > 1:
+            lines_with_filler = [""] * (2 * len(lines) - 1)
+            lines_with_filler[::2] = lines
+            lines = lines_with_filler
 
         return lines
 
@@ -393,12 +405,17 @@ class HikingQuizApp(App):
         self, track_name: str, stage: Dict, description_position: str
     ) -> Image.Image:
         track_path = self.data_folder / "tracks" / track_name
+        track = Track.from_folder(track_path)
+
+        track_info = self._get_track_info(track, stage.get("info", []))
+        lines = self._format_track_info_lines(track_info, stage)
+
         image = plot_track_duotone(
             track_path,
             topo_land_path=self.data_folder / "topo-land",
             topo_water_path=self.data_folder / "topo-water",
             draw_partial_track=stage.get("draw_partial_track", 1.0),
-            halign_ideal_centerline=0.7 / 2 if "info" in stage else 0.5,
+            halign_ideal_centerline=0.7 / 2 if lines else 0.5,
             draw_topo=stage.get("draw_topo", False),
             draw_major_level_labels=stage.get("draw_major_level_labels", False),
             add_scale=stage.get("add_scale", False),
@@ -408,8 +425,6 @@ class HikingQuizApp(App):
         screen = self.create_empty_screen()
         screen.paste(image, (0, 0))
 
-        track_info = self._get_track_info(track_name, stage.get("info", []))
-        lines = self._format_track_info_lines(track_info, stage)
         self._draw_description_lines(screen, lines, position=description_position)
         return screen
 
