@@ -131,8 +131,8 @@ def main():
                             position=(800 // 4 - 150, 20),
                             size=(2 * 150, 220),
                             measurements=[
-                                temperature,
                                 feels_like_temperature,
+                                temperature,
                                 humidity,
                                 co2,
                                 temperature_balcony,
