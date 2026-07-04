@@ -13,6 +13,7 @@ dependencies = [
     "pillow>=11.1.0",
     "pyyaml>=6.0.2",
     "influxdb-client>=1.48.0",
+    "metpy>=1.7.1",
 ]
 
 [tool.ruff.lint]
