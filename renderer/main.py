@@ -5,13 +5,17 @@ import pathlib
 import time
 
 from renderer.apps.dashboard.app import DashboardApp, DashboardScreenConfig
-from renderer.apps.dashboard.influx import (
-    InfluxDBCurrentValue,
-    InfluxDBTrend,
-    InfluxDBTrendCompareToYesterday,
+from renderer.apps.dashboard.influx import InfluxDBMeasurement
+from renderer.apps.dashboard.measurement import (
+    TableCurrentValues,
+    Trend,
     TrendAggregation,
+    TrendCompareToYesterday,
 )
 from renderer.apps.dashboard.sun import SunriseSunsetWidget
+from renderer.apps.dashboard.temperature_humidity import (
+    FeelsLikeTemperature,
+)
 from renderer.apps.dashboard.weather import WeatherWidget
 from renderer.apps.hiking_quiz.app import HikingQuizApp
 from renderer.config import INFLUXDB_URL
@@ -43,6 +47,47 @@ def main():
             linestyle="dotted",
         ),
     ]
+
+    temperature = InfluxDBMeasurement(
+        url=INFLUXDB_URL,
+        sensor_id=1,
+        field="temperature",
+        label="Temperatur",
+        unit="°C",
+        precision=1,
+    )
+    temperature_balcony = InfluxDBMeasurement(
+        url=INFLUXDB_URL,
+        sensor_id=3,
+        field="temperature",
+        label="Temperatur (Balkon)",
+        unit="°C",
+        precision=1,
+    )
+    humidity = InfluxDBMeasurement(
+        url=INFLUXDB_URL,
+        sensor_id=1,
+        field="humidity",
+        label="Luftfeuchtigkeit",
+        unit="%",
+        precision=0,
+    )
+    co2 = InfluxDBMeasurement(
+        url=INFLUXDB_URL,
+        sensor_id=1,
+        field="co2",
+        label="CO₂ Gehalt",
+        unit="ppm",
+        precision=-1,
+    )
+    feels_like_temperature = FeelsLikeTemperature(
+        temperature_measurement=temperature,
+        humidity_measurement=humidity,
+        label="Gefühlte Temperatur",
+        precision=1,
+        reference_humidity=50.0,
+        calculation_method="wbgt",
+    )
 
     apps = [
         HikingQuizApp(),
@@ -82,74 +127,51 @@ def main():
             [
                 DashboardScreenConfig(
                     [
-                        InfluxDBCurrentValue(
-                            position=(800 // 4 - 150, 480 // 4 - 2 * 50),
-                            size=(2 * 150, 4 * 50),
-                            url=INFLUXDB_URL,
-                            data_fields=[
-                                {
-                                    "sensor_id": 1,
-                                    "field": "temperature",
-                                    "label": "Temperatur",
-                                },
-                                {
-                                    "sensor_id": 3,
-                                    "field": "temperature",
-                                    "label": "Temperatur (Balkon)",
-                                },
-                                {
-                                    "sensor_id": 1,
-                                    "field": "humidity",
-                                    "label": "Luftfeuchtigkeit",
-                                },
-                                {
-                                    "sensor_id": 1,
-                                    "field": "co2",
-                                    "label": "CO₂ Gehalt",
-                                },
+                        TableCurrentValues(
+                            position=(800 // 4 - 150, 20),
+                            size=(2 * 150, 220),
+                            measurements=[
+                                feels_like_temperature,
+                                temperature,
+                                humidity,
+                                co2,
+                                temperature_balcony,
                             ],
                             alignment="vertical",
                         ),
-                        InfluxDBTrendCompareToYesterday(
+                        TrendCompareToYesterday(
                             position=(405, 10),
                             size=(385 + 10, 230),
-                            url=INFLUXDB_URL,
-                            data_field="temperature",
-                            sensor_id="1",
+                            measurement=temperature,
+                            min_range=(18, 24),
                         ),
-                        InfluxDBTrendCompareToYesterday(
+                        TrendCompareToYesterday(
                             position=(10, 240),
                             size=(385 + 10, 230),
-                            url=INFLUXDB_URL,
-                            data_field="humidity",
-                            sensor_id="1",
+                            measurement=humidity,
+                            min_range=(40, 60),
                         ),
-                        InfluxDBTrendCompareToYesterday(
+                        TrendCompareToYesterday(
                             position=(405, 240),
                             size=(385 + 10, 230),
-                            url=INFLUXDB_URL,
-                            data_field="co2",
-                            sensor_id="1",
+                            measurement=co2,
+                            min_range=(400, 1000),
                         ),
                     ]
                 ),
                 DashboardScreenConfig(
                     [
-                        InfluxDBTrend(
+                        Trend(
                             position=(10, 10),
                             size=(800 - 10 - 10, 230),
-                            url=INFLUXDB_URL,
-                            data_field="temperature",
-                            sensor_id="1",
+                            measurement=temperature,
                             aggregations=air_quality_long_term_aggregations,
                             history_h=air_quality_long_term_history_h,
                         ),
-                        InfluxDBTrend(
+                        Trend(
                             position=(10, 10 + 230),
                             size=(800 - 10 - 10, 230),
-                            url=INFLUXDB_URL,
-                            data_field="temperature",
-                            sensor_id="3",
+                            measurement=temperature_balcony,
                             aggregations=air_quality_long_term_aggregations,
                             history_h=air_quality_long_term_history_h,
                         ),
