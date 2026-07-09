@@ -13,9 +13,6 @@ from renderer.apps.dashboard.measurement import (
     TrendCompareToYesterday,
 )
 from renderer.apps.dashboard.sun import SunriseSunsetWidget
-from renderer.apps.dashboard.temperature_humidity import (
-    FeelsLikeTemperature,
-)
 from renderer.apps.dashboard.weather import WeatherWidget
 from renderer.apps.hiking_quiz.app import HikingQuizApp
 from renderer.config import INFLUXDB_URL
@@ -80,14 +77,6 @@ def main():
         unit="ppm",
         precision=-1,
     )
-    feels_like_temperature = FeelsLikeTemperature(
-        temperature_measurement=temperature,
-        humidity_measurement=humidity,
-        label="Gefühlte Temperatur",
-        precision=1,
-        reference_humidity=50.0,
-        calculation_method="wbgt",
-    )
 
     apps = [
         HikingQuizApp(),
@@ -129,9 +118,8 @@ def main():
                     [
                         TableCurrentValues(
                             position=(800 // 4 - 150, 20),
-                            size=(2 * 150, 220),
+                            size=(2 * 150, 200),
                             measurements=[
-                                feels_like_temperature,
                                 temperature,
                                 humidity,
                                 co2,
