@@ -8,7 +8,6 @@ import matplotlib
 import matplotlib.font_manager as fm
 from matplotlib import pyplot as plt
 from matplotlib import ticker
-from mpl_toolkits.axisartist.axislines import AxesZero
 from PIL import Image, ImageDraw, ImageFont
 
 from .widget import Widget
@@ -238,7 +237,7 @@ class Trend(Widget):
 
         fig = plt.figure(figsize=(self.width * px, self.height * px), dpi=dpi)
 
-        ax = fig.add_subplot(axes_class=AxesZero)
+        ax = fig.add_subplot()
         ax.set_position(
             (
                 3.8 * font["size"] / self.width,  # left
@@ -299,6 +298,8 @@ class Trend(Widget):
         min_value = min(min_value, min_data_value - 0.1 * (max_value - min_value))
         max_value = max(max_value, max_data_value + 0.1 * (max_value - min_value))
         ax.set_ylim(min_value, max_value)
+
+        ax.tick_params(direction="in", length=0)
 
         return fig, ax
 
